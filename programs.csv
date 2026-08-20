@@ -1,0 +1,5 @@
+program_id,program_code,program_name,department_id,degree,duration_years
+P01,CSE,Computer Science and Engineering,D01,BTech,4
+P02,ECE,Electronics and Communication Engineering,D02,BTech,4
+P03,AIML,Artificial Intelligence and Machine Learning,D03,BTech,4
+P04,AR,Automation and Robotics,D04,BTech,4

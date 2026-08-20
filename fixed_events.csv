@@ -1,0 +1,3 @@
+event_id,event_name,day,start_time,end_time,scope
+EV001,Weekly Faculty Meeting,MON,12:00,13:00,ALL_FACULTY
+EV002,Common Lunch Break,ALL,13:00,14:00,ALL

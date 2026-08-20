@@ -1,0 +1,41 @@
+faculty_id,name,department_id,designation,employment_type,max_hours_per_week,max_hours_per_day,min_hours_per_week
+F001,Prof. Aarav Sharma,D01,Professor,PERMANENT,18,4,8
+F002,Prof. Vivaan Mehta,D01,Assistant Professor,PERMANENT,18,4,8
+F003,Prof. Aditya Khan,D01,Assistant Professor,PERMANENT,18,4,8
+F004,Prof. Arjun Malhotra,D01,Associate Professor,VISITING,10,3,2
+F005,Prof. Rohan Gupta,D01,Assistant Professor,PERMANENT,18,4,8
+F006,Prof. Karan Patel,D01,Professor,PERMANENT,18,4,8
+F007,Prof. Rahul Rao,D01,Associate Professor,PERMANENT,18,4,8
+F008,Prof. Nikhil Verma,D01,Assistant Professor,PERMANENT,18,4,8
+F009,Prof. Sanya Singh,D01,Assistant Professor,PERMANENT,18,4,8
+F010,Prof. Priya Joshi,D01,Associate Professor,PERMANENT,18,4,8
+F011,Prof. Neha Sharma,D01,Professor,PERMANENT,18,4,8
+F012,Prof. Ananya Mehta,D01,Assistant Professor,PERMANENT,18,4,8
+F013,Prof. Kavya Khan,D02,Associate Professor,PERMANENT,18,4,8
+F014,Prof. Isha Malhotra,D02,Assistant Professor,PERMANENT,18,4,8
+F015,Prof. Meera Gupta,D02,Assistant Professor,PERMANENT,18,4,8
+F016,Prof. Riya Patel,D02,Professor,VISITING,10,3,2
+F017,Prof. Aditi Rao,D02,Assistant Professor,VISITING,10,3,2
+F018,Prof. Pooja Verma,D02,Assistant Professor,PERMANENT,18,4,8
+F019,Prof. Simran Singh,D02,Associate Professor,PERMANENT,18,4,8
+F020,Prof. Naina Joshi,D02,Assistant Professor,PERMANENT,18,4,8
+F021,Prof. Aarav Sharma,D02,Professor,PERMANENT,18,4,8
+F022,Prof. Vivaan Mehta,D02,Associate Professor,PERMANENT,18,4,8
+F023,Prof. Aditya Khan,D03,Assistant Professor,VISITING,10,3,2
+F024,Prof. Arjun Malhotra,D03,Assistant Professor,PERMANENT,18,4,8
+F025,Prof. Rohan Gupta,D03,Associate Professor,PERMANENT,18,4,8
+F026,Prof. Karan Patel,D03,Professor,PERMANENT,18,4,8
+F027,Prof. Rahul Rao,D03,Assistant Professor,ADJUNCT,12,3,2
+F028,Prof. Nikhil Verma,D03,Associate Professor,PERMANENT,18,4,8
+F029,Prof. Sanya Singh,D03,Assistant Professor,PERMANENT,18,4,8
+F030,Prof. Priya Joshi,D03,Assistant Professor,PERMANENT,18,4,8
+F031,Prof. Neha Sharma,D03,Professor,ADJUNCT,12,3,2
+F032,Prof. Ananya Mehta,D04,Assistant Professor,PERMANENT,18,4,8
+F033,Prof. Kavya Khan,D04,Assistant Professor,PERMANENT,18,4,8
+F034,Prof. Isha Malhotra,D04,Associate Professor,PERMANENT,18,4,8
+F035,Prof. Meera Gupta,D04,Assistant Professor,PERMANENT,18,4,8
+F036,Prof. Riya Patel,D04,Professor,PERMANENT,18,4,8
+F037,Prof. Aditi Rao,D04,Associate Professor,PERMANENT,18,4,8
+F038,Prof. Pooja Verma,D04,Assistant Professor,PERMANENT,18,4,8
+F039,Prof. Simran Singh,D05,Assistant Professor,PERMANENT,18,4,8
+F040,Prof. Naina Joshi,D05,Associate Professor,PERMANENT,18,4,8

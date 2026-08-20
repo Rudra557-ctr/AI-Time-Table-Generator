@@ -1,0 +1,2 @@
+students,faculty,sections,courses,offerings,rooms,time_slots,elective_groups,student_enrollments,faculty_course_links,faculty_availability_rows,room_availability_rows,courses_with_no_eligible_faculty,sections_total_students
+1000,40,16,65,144,27,35,6,7250,777,1400,945,0,1000

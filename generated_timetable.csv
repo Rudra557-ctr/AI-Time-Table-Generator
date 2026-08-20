@@ -1,0 +1,108 @@
+offering_id,course_id,course_name,section_id,session,slot_id,day,start_time,end_time,room_id,room_name,faculty_id,faculty_name
+O0001,C001,Engineering Mathematics I,S_CSE_1_A,1,FRI_1000,FRI,10:00,11:00,R002,Classroom-02,F039,Prof. Simran Singh
+O0001,C001,Engineering Mathematics I,S_CSE_1_A,2,THU_0900,THU,09:00,10:00,R001,Classroom-01,F039,Prof. Simran Singh
+O0001,C001,Engineering Mathematics I,S_CSE_1_A,3,TUE_0900,TUE,09:00,10:00,R002,Classroom-02,F039,Prof. Simran Singh
+O0001,C001,Engineering Mathematics I,S_CSE_1_A,4,TUE_1100,TUE,11:00,12:00,R002,Classroom-02,F039,Prof. Simran Singh
+O0002,C002,Engineering Physics,S_CSE_1_A,1,TUE_1500,TUE,15:00,16:00,R001,Classroom-01,F028,Prof. Nikhil Verma
+O0002,C002,Engineering Physics,S_CSE_1_A,2,THU_1600,THU,16:00,17:00,R001,Classroom-01,F028,Prof. Nikhil Verma
+O0002,C002,Engineering Physics,S_CSE_1_A,3,MON_1400,MON,14:00,15:00,R001,Classroom-01,F028,Prof. Nikhil Verma
+O0003,C003,Engineering Chemistry,S_CSE_1_A,1,TUE_1400,TUE,14:00,15:00,R002,Classroom-02,F023,Prof. Aditya Khan
+O0003,C003,Engineering Chemistry,S_CSE_1_A,2,THU_1500,THU,15:00,16:00,R001,Classroom-01,F023,Prof. Aditya Khan
+O0003,C003,Engineering Chemistry,S_CSE_1_A,3,TUE_1600,TUE,16:00,17:00,R002,Classroom-02,F023,Prof. Aditya Khan
+O0004,C004,Communication Skills,S_CSE_1_A,1,FRI_0900,FRI,09:00,10:00,R005,Classroom-05,F039,Prof. Simran Singh
+O0004,C004,Communication Skills,S_CSE_1_A,2,FRI_1100,FRI,11:00,12:00,R001,Classroom-01,F039,Prof. Simran Singh
+O0005,C005,Programming Fundamentals,S_CSE_1_A,1,FRI_1500,FRI,15:00,16:00,CL004,Computer-Lab-04,F007,Prof. Rahul Rao
+O0005,C005,Programming Fundamentals,S_CSE_1_A,2,FRI_1400,FRI,14:00,15:00,CL001,Computer-Lab-01,F007,Prof. Rahul Rao
+O0005,C005,Programming Fundamentals,S_CSE_1_A,3,THU_1400,THU,14:00,15:00,CL004,Computer-Lab-04,F007,Prof. Rahul Rao
+O0005,C005,Programming Fundamentals,S_CSE_1_A,4,FRI_1600,FRI,16:00,17:00,CL004,Computer-Lab-04,F007,Prof. Rahul Rao
+O0006,C006,Physics Lab,S_CSE_1_A,1,WED_1400,WED,14:00,15:00,PL001,Physics-Lab-01,F025,Prof. Rohan Gupta
+O0007,C007,Engineering Graphics,S_CSE_1_A,1,MON_1100,MON,11:00,12:00,W002,Engineering Workshop-02,F027,Prof. Rahul Rao
+O0008,C001,Engineering Mathematics I,S_ECE_1_A,1,FRI_1500,FRI,15:00,16:00,R008,Classroom-08,F040,Prof. Naina Joshi
+O0008,C001,Engineering Mathematics I,S_ECE_1_A,2,TUE_1600,TUE,16:00,17:00,R003,Classroom-03,F040,Prof. Naina Joshi
+O0008,C001,Engineering Mathematics I,S_ECE_1_A,3,THU_1400,THU,14:00,15:00,R002,Classroom-02,F040,Prof. Naina Joshi
+O0008,C001,Engineering Mathematics I,S_ECE_1_A,4,THU_1500,THU,15:00,16:00,R006,Classroom-06,F040,Prof. Naina Joshi
+O0009,C002,Engineering Physics,S_ECE_1_A,1,MON_1500,MON,15:00,16:00,R007,Classroom-07,F028,Prof. Nikhil Verma
+O0009,C002,Engineering Physics,S_ECE_1_A,2,WED_1500,WED,15:00,16:00,R006,Classroom-06,F028,Prof. Nikhil Verma
+O0009,C002,Engineering Physics,S_ECE_1_A,3,WED_1600,WED,16:00,17:00,R006,Classroom-06,F028,Prof. Nikhil Verma
+O0010,C003,Engineering Chemistry,S_ECE_1_A,1,TUE_1000,TUE,10:00,11:00,R005,Classroom-05,F038,Prof. Pooja Verma
+O0010,C003,Engineering Chemistry,S_ECE_1_A,2,FRI_1200,FRI,12:00,13:00,R006,Classroom-06,F038,Prof. Pooja Verma
+O0010,C003,Engineering Chemistry,S_ECE_1_A,3,MON_1400,MON,14:00,15:00,R004,Classroom-04,F038,Prof. Pooja Verma
+O0011,C004,Communication Skills,S_ECE_1_A,1,FRI_1100,FRI,11:00,12:00,R007,Classroom-07,F033,Prof. Kavya Khan
+O0011,C004,Communication Skills,S_ECE_1_A,2,FRI_1000,FRI,10:00,11:00,R007,Classroom-07,F033,Prof. Kavya Khan
+O0012,C005,Programming Fundamentals,S_ECE_1_A,1,WED_1100,WED,11:00,12:00,CL006,Computer-Lab-06,F039,Prof. Simran Singh
+O0012,C005,Programming Fundamentals,S_ECE_1_A,2,MON_1000,MON,10:00,11:00,CL006,Computer-Lab-06,F039,Prof. Simran Singh
+O0012,C005,Programming Fundamentals,S_ECE_1_A,3,WED_1000,WED,10:00,11:00,CL006,Computer-Lab-06,F039,Prof. Simran Singh
+O0012,C005,Programming Fundamentals,S_ECE_1_A,4,THU_1000,THU,10:00,11:00,CL006,Computer-Lab-06,F039,Prof. Simran Singh
+O0013,C006,Physics Lab,S_ECE_1_A,1,MON_0900,MON,09:00,10:00,PL001,Physics-Lab-01,F021,Prof. Aarav Sharma
+O0014,C007,Engineering Graphics,S_ECE_1_A,1,FRI_0900,FRI,09:00,10:00,W001,Engineering Workshop-01,F027,Prof. Rahul Rao
+O0015,C001,Engineering Mathematics I,S_AIML_1_A,1,WED_0900,WED,09:00,10:00,R006,Classroom-06,F012,Prof. Ananya Mehta
+O0015,C001,Engineering Mathematics I,S_AIML_1_A,2,TUE_1100,TUE,11:00,12:00,R008,Classroom-08,F012,Prof. Ananya Mehta
+O0015,C001,Engineering Mathematics I,S_AIML_1_A,3,MON_0900,MON,09:00,10:00,R007,Classroom-07,F012,Prof. Ananya Mehta
+O0015,C001,Engineering Mathematics I,S_AIML_1_A,4,MON_1100,MON,11:00,12:00,R007,Classroom-07,F012,Prof. Ananya Mehta
+O0016,C002,Engineering Physics,S_AIML_1_A,1,FRI_0900,FRI,09:00,10:00,R001,Classroom-01,F024,Prof. Arjun Malhotra
+O0016,C002,Engineering Physics,S_AIML_1_A,2,FRI_1100,FRI,11:00,12:00,R005,Classroom-05,F024,Prof. Arjun Malhotra
+O0016,C002,Engineering Physics,S_AIML_1_A,3,MON_1000,MON,10:00,11:00,R005,Classroom-05,F024,Prof. Arjun Malhotra
+O0017,C003,Engineering Chemistry,S_AIML_1_A,1,FRI_1600,FRI,16:00,17:00,R001,Classroom-01,F040,Prof. Naina Joshi
+O0017,C003,Engineering Chemistry,S_AIML_1_A,2,MON_1500,MON,15:00,16:00,R002,Classroom-02,F040,Prof. Naina Joshi
+O0017,C003,Engineering Chemistry,S_AIML_1_A,3,TUE_1500,TUE,15:00,16:00,R006,Classroom-06,F040,Prof. Naina Joshi
+O0018,C004,Communication Skills,S_AIML_1_A,1,TUE_1400,TUE,14:00,15:00,R001,Classroom-01,F004,Prof. Arjun Malhotra
+O0018,C004,Communication Skills,S_AIML_1_A,2,TUE_1600,TUE,16:00,17:00,R007,Classroom-07,F004,Prof. Arjun Malhotra
+O0019,C005,Programming Fundamentals,S_AIML_1_A,1,TUE_0900,TUE,09:00,10:00,CL002,Computer-Lab-02,F003,Prof. Aditya Khan
+O0019,C005,Programming Fundamentals,S_AIML_1_A,2,TUE_1000,TUE,10:00,11:00,CL002,Computer-Lab-02,F003,Prof. Aditya Khan
+O0019,C005,Programming Fundamentals,S_AIML_1_A,3,WED_1000,WED,10:00,11:00,CL002,Computer-Lab-02,F003,Prof. Aditya Khan
+O0019,C005,Programming Fundamentals,S_AIML_1_A,4,FRI_1000,FRI,10:00,11:00,CL002,Computer-Lab-02,F003,Prof. Aditya Khan
+O0020,C006,Physics Lab,S_AIML_1_A,1,THU_0900,THU,09:00,10:00,PL001,Physics-Lab-01,F021,Prof. Aarav Sharma
+O0021,C007,Engineering Graphics,S_AIML_1_A,1,THU_1100,THU,11:00,12:00,W001,Engineering Workshop-01,F039,Prof. Simran Singh
+O0022,C001,Engineering Mathematics I,S_AR_1_A,1,WED_1000,WED,10:00,11:00,R008,Classroom-08,F012,Prof. Ananya Mehta
+O0022,C001,Engineering Mathematics I,S_AR_1_A,2,FRI_0900,FRI,09:00,10:00,R008,Classroom-08,F012,Prof. Ananya Mehta
+O0022,C001,Engineering Mathematics I,S_AR_1_A,3,MON_1000,MON,10:00,11:00,R008,Classroom-08,F012,Prof. Ananya Mehta
+O0022,C001,Engineering Mathematics I,S_AR_1_A,4,TUE_1000,TUE,10:00,11:00,R001,Classroom-01,F012,Prof. Ananya Mehta
+O0023,C002,Engineering Physics,S_AR_1_A,1,MON_1600,MON,16:00,17:00,R004,Classroom-04,F028,Prof. Nikhil Verma
+O0023,C002,Engineering Physics,S_AR_1_A,2,WED_1400,WED,14:00,15:00,R005,Classroom-05,F028,Prof. Nikhil Verma
+O0023,C002,Engineering Physics,S_AR_1_A,3,FRI_1600,FRI,16:00,17:00,R008,Classroom-08,F028,Prof. Nikhil Verma
+O0024,C003,Engineering Chemistry,S_AR_1_A,1,TUE_0900,TUE,09:00,10:00,R005,Classroom-05,F038,Prof. Pooja Verma
+O0024,C003,Engineering Chemistry,S_AR_1_A,2,THU_1400,THU,14:00,15:00,R005,Classroom-05,F038,Prof. Pooja Verma
+O0024,C003,Engineering Chemistry,S_AR_1_A,3,TUE_1400,TUE,14:00,15:00,R005,Classroom-05,F038,Prof. Pooja Verma
+O0025,C004,Communication Skills,S_AR_1_A,1,FRI_1400,FRI,14:00,15:00,R002,Classroom-02,F029,Prof. Sanya Singh
+O0025,C004,Communication Skills,S_AR_1_A,2,MON_1400,MON,14:00,15:00,R002,Classroom-02,F029,Prof. Sanya Singh
+O0026,C005,Programming Fundamentals,S_AR_1_A,1,MON_0900,MON,09:00,10:00,CL001,Computer-Lab-01,F003,Prof. Aditya Khan
+O0026,C005,Programming Fundamentals,S_AR_1_A,2,THU_1100,THU,11:00,12:00,CL003,Computer-Lab-03,F003,Prof. Aditya Khan
+O0026,C005,Programming Fundamentals,S_AR_1_A,3,THU_0900,THU,09:00,10:00,CL003,Computer-Lab-03,F003,Prof. Aditya Khan
+O0026,C005,Programming Fundamentals,S_AR_1_A,4,THU_1000,THU,10:00,11:00,CL003,Computer-Lab-03,F003,Prof. Aditya Khan
+O0027,C006,Physics Lab,S_AR_1_A,1,MON_1100,MON,11:00,12:00,PL001,Physics-Lab-01,F021,Prof. Aarav Sharma
+O0028,C007,Engineering Graphics,S_AR_1_A,1,TUE_1100,TUE,11:00,12:00,W002,Engineering Workshop-02,F038,Prof. Pooja Verma
+O0029,C008,Engineering Mathematics III,S_CSE_2_A,1,TUE_1000,TUE,10:00,11:00,R002,Classroom-02,F039,Prof. Simran Singh
+O0029,C008,Engineering Mathematics III,S_CSE_2_A,2,WED_0900,WED,09:00,10:00,R007,Classroom-07,F039,Prof. Simran Singh
+O0029,C008,Engineering Mathematics III,S_CSE_2_A,3,MON_0900,MON,09:00,10:00,R006,Classroom-06,F039,Prof. Simran Singh
+O0029,C008,Engineering Mathematics III,S_CSE_2_A,4,MON_1100,MON,11:00,12:00,R003,Classroom-03,F039,Prof. Simran Singh
+O0030,C009,Environmental Studies,S_CSE_2_A,1,THU_1100,THU,11:00,12:00,R007,Classroom-07,F018,Prof. Pooja Verma
+O0030,C009,Environmental Studies,S_CSE_2_A,2,WED_1100,WED,11:00,12:00,R003,Classroom-03,F018,Prof. Pooja Verma
+O0031,C010,Data Structures,S_CSE_2_A,1,THU_1500,THU,15:00,16:00,R003,Classroom-03,F032,Prof. Ananya Mehta
+O0031,C010,Data Structures,S_CSE_2_A,2,FRI_0900,FRI,09:00,10:00,R007,Classroom-07,F032,Prof. Ananya Mehta
+O0031,C010,Data Structures,S_CSE_2_A,3,WED_1000,WED,10:00,11:00,R003,Classroom-03,F032,Prof. Ananya Mehta
+O0031,C010,Data Structures,S_CSE_2_A,4,THU_1000,THU,10:00,11:00,R007,Classroom-07,F032,Prof. Ananya Mehta
+O0032,C011,Object Oriented Programming,S_CSE_2_A,1,MON_1400,MON,14:00,15:00,R006,Classroom-06,F010,Prof. Priya Joshi
+O0032,C011,Object Oriented Programming,S_CSE_2_A,2,THU_1600,THU,16:00,17:00,R007,Classroom-07,F010,Prof. Priya Joshi
+O0032,C011,Object Oriented Programming,S_CSE_2_A,3,WED_1600,WED,16:00,17:00,R007,Classroom-07,F010,Prof. Priya Joshi
+O0033,C012,Digital Logic,S_CSE_2_A,1,FRI_1400,FRI,14:00,15:00,R006,Classroom-06,F040,Prof. Naina Joshi
+O0033,C012,Digital Logic,S_CSE_2_A,2,MON_1600,MON,16:00,17:00,R006,Classroom-06,F040,Prof. Naina Joshi
+O0033,C012,Digital Logic,S_CSE_2_A,3,TUE_1400,TUE,14:00,15:00,R003,Classroom-03,F040,Prof. Naina Joshi
+O0034,C013,OOP Lab,S_CSE_2_A,1,FRI_1000,FRI,10:00,11:00,CL005,Computer-Lab-05,F006,Prof. Karan Patel
+O0035,C008,Engineering Mathematics III,S_ECE_2_A,1,FRI_1400,FRI,14:00,15:00,R004,Classroom-04,F022,Prof. Vivaan Mehta
+O0035,C008,Engineering Mathematics III,S_ECE_2_A,2,THU_1600,THU,16:00,17:00,R004,Classroom-04,F022,Prof. Vivaan Mehta
+O0035,C008,Engineering Mathematics III,S_ECE_2_A,3,TUE_1400,TUE,14:00,15:00,R004,Classroom-04,F022,Prof. Vivaan Mehta
+O0035,C008,Engineering Mathematics III,S_ECE_2_A,4,THU_1400,THU,14:00,15:00,R008,Classroom-08,F022,Prof. Vivaan Mehta
+O0036,C009,Environmental Studies,S_ECE_2_A,1,THU_0900,THU,09:00,10:00,R004,Classroom-04,F018,Prof. Pooja Verma
+O0036,C009,Environmental Studies,S_ECE_2_A,2,WED_0900,WED,09:00,10:00,R004,Classroom-04,F018,Prof. Pooja Verma
+O0037,C021,Electronic Devices,S_ECE_2_A,1,FRI_1000,FRI,10:00,11:00,R004,Classroom-04,F018,Prof. Pooja Verma
+O0037,C021,Electronic Devices,S_ECE_2_A,2,FRI_0900,FRI,09:00,10:00,R004,Classroom-04,F018,Prof. Pooja Verma
+O0037,C021,Electronic Devices,S_ECE_2_A,3,THU_1000,THU,10:00,11:00,R004,Classroom-04,F018,Prof. Pooja Verma
+O0037,C021,Electronic Devices,S_ECE_2_A,4,MON_0900,MON,09:00,10:00,R004,Classroom-04,F018,Prof. Pooja Verma
+O0038,C022,Signals and Systems,S_ECE_2_A,1,MON_1500,MON,15:00,16:00,R004,Classroom-04,F022,Prof. Vivaan Mehta
+O0038,C022,Signals and Systems,S_ECE_2_A,2,FRI_1500,FRI,15:00,16:00,R003,Classroom-03,F022,Prof. Vivaan Mehta
+O0038,C022,Signals and Systems,S_ECE_2_A,3,WED_1400,WED,14:00,15:00,R004,Classroom-04,F022,Prof. Vivaan Mehta
+O0038,C022,Signals and Systems,S_ECE_2_A,4,TUE_1600,TUE,16:00,17:00,R004,Classroom-04,F022,Prof. Vivaan Mehta
+O0039,C023,Digital Electronics,S_ECE_2_A,1,WED_1500,WED,15:00,16:00,R004,Classroom-04,F020,Prof. Naina Joshi
+O0039,C023,Digital Electronics,S_ECE_2_A,2,WED_1000,WED,10:00,11:00,R004,Classroom-04,F020,Prof. Naina Joshi
+O0039,C023,Digital Electronics,S_ECE_2_A,3,WED_1600,WED,16:00,17:00,R004,Classroom-04,F020,Prof. Naina Joshi
+O0040,C024,Digital Electronics Lab,S_ECE_2_A,1,TUE_1500,TUE,15:00,16:00,EL002,Electronics-Lab-02,F002,Prof. Vivaan Mehta
