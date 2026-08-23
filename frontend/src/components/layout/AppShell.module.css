@@ -1,0 +1,43 @@
+.shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.mainCol {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 14px 28px;
+  border-bottom: 1px solid var(--border);
+}
+
+.jobBadge {
+  margin-right: auto;
+  font-size: 11.5px;
+  color: var(--ink-faint);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 5px 10px;
+  border-radius: 999px;
+}
+
+.main {
+  flex: 1;
+  padding: 28px;
+  max-width: 1240px;
+  width: 100%;
+}
+
+@media (max-width: 900px) {
+  .shell {
+    flex-direction: column;
+  }
+}

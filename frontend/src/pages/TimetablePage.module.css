@@ -1,0 +1,171 @@
+.chipRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.chip {
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--ink-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font-mono);
+}
+
+.chipActive {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+}
+
+.loading {
+  padding: 40px;
+  text-align: center;
+  color: var(--ink-muted);
+  font-size: 13px;
+}
+
+.scroller {
+  overflow-x: auto;
+}
+
+.grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11.5px;
+}
+
+.grid th,
+.grid td {
+  border: 1px solid var(--border);
+  padding: 10px 8px;
+  text-align: center;
+}
+
+.grid th {
+  background: var(--bg-card-muted);
+  color: var(--ink-muted);
+  font-size: 10.5px;
+}
+
+.dayCell {
+  background: var(--bg-card-muted);
+  font-weight: 700;
+  width: 50px;
+}
+
+.slotCell {
+  line-height: 1.5;
+  color: var(--ink);
+  white-space: pre-line;
+}
+
+.empty {
+  color: var(--ink-faint);
+}
+
+.changedCell {
+  background: var(--accent-soft);
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.downloadRow {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.sectionTitle {
+  font-size: 15px;
+  margin: 28px 0 12px;
+}
+
+.polishRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--ink-muted);
+  margin-bottom: 14px;
+}
+
+.resolveDesc {
+  font-size: 13px;
+  color: var(--ink-muted);
+  margin-bottom: 16px;
+  max-width: 70ch;
+}
+
+.resolveRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+  font-size: 12.5px;
+}
+
+.diffScroller {
+  overflow-x: auto;
+  margin-top: 8px;
+}
+
+.diffTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.diffTable th,
+.diffTable td {
+  border-bottom: 1px solid var(--border);
+  padding: 9px 12px;
+  text-align: left;
+}
+
+.diffTable th {
+  color: var(--ink-muted);
+  font-size: 10.5px;
+  text-transform: uppercase;
+}
+
+.arrow {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.tierRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.tierBadge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+}
+
+.tierOk {
+  color: var(--ok);
+  background: var(--ok-soft);
+  border-color: var(--ok);
+}
+
+.tierBad {
+  color: var(--warn);
+  background: var(--warn-soft);
+  border-color: var(--warn);
+}
+
+.betterCell {
+  color: var(--ok);
+  font-weight: 700;
+}

@@ -145,6 +145,62 @@ def _build_occupied(model, Start, offerings, courses_by_id, time_slots, slot_to_
                 affecting[sec][day][period] = aff
     return occ, affecting
 
+def _gap_and_isolated_terms(model, occ_entity, entity, day, need_isolated=True):
+    """Builds one (section-or-faculty, day)'s gap-count IntVar and isolated
+    single-period-run BoolVars from its occ[day][period] BoolVars (see
+    _build_occupied) -- the exact SC02_gaps/SC_isolated formula, factored
+    out so add_soft_objective's aggregate terms AND solve_pipeline's
+    single-section LNS gap-repair (which needs the identical per-section
+    score, not a reimplementation that could silently drift from it) both
+    call the same code."""
+    occupied = occ_entity[day]
+    has_any = model.NewBoolVar(f"has_any_{entity}_{day}")
+    model.AddMaxEquality(has_any, [occupied[p] for p in range(1, 8)])
+    first = model.NewIntVar(0, 8, f"first_{entity}_{day}")
+    last = model.NewIntVar(0, 8, f"last_{entity}_{day}")
+    min_candidates, max_candidates = [], []
+    for p in range(1, 8):
+        cand_min = model.NewIntVar(1, 8, f"cand_min_{entity}_{day}_{p}")
+        cand_max = model.NewIntVar(0, 7, f"cand_max_{entity}_{day}_{p}")
+        model.Add(cand_min == p).OnlyEnforceIf(occupied[p])
+        model.Add(cand_min == 8).OnlyEnforceIf(occupied[p].Not())
+        min_candidates.append(cand_min)
+        model.Add(cand_max == p).OnlyEnforceIf(occupied[p])
+        model.Add(cand_max == 0).OnlyEnforceIf(occupied[p].Not())
+        max_candidates.append(cand_max)
+    model.AddMinEquality(first, min_candidates)
+    model.AddMaxEquality(last, max_candidates)
+    first_corr = model.NewIntVar(0, 7, f"firstc_{entity}_{day}")
+    last_corr = model.NewIntVar(0, 7, f"lastc_{entity}_{day}")
+    model.Add(first_corr == 0).OnlyEnforceIf(has_any.Not())
+    model.Add(first_corr == first).OnlyEnforceIf(has_any)
+    model.Add(last_corr == 0).OnlyEnforceIf(has_any.Not())
+    model.Add(last_corr == last).OnlyEnforceIf(has_any)
+    occupied_sum = sum(occupied[p] for p in range(1, 8))
+    gaps = model.NewIntVar(0, 7, f"gaps_{entity}_{day}")
+    tmp = model.NewIntVar(-7, 7, f"tmp_gaps_{entity}_{day}")
+    model.Add(tmp == last_corr - first_corr + 1 - occupied_sum)
+    model.Add(gaps == tmp).OnlyEnforceIf(has_any)
+    model.Add(gaps == 0).OnlyEnforceIf(has_any.Not())
+
+    isolated = []
+    if need_isolated:
+        for p in range(1, 8):
+            and_terms = [occupied[p]]
+            or_terms = [occupied[p].Not()]
+            if p > 1:
+                and_terms.append(occupied[p - 1].Not())
+                or_terms.append(occupied[p - 1])
+            if p < 7:
+                and_terms.append(occupied[p + 1].Not())
+                or_terms.append(occupied[p + 1])
+            iso = model.NewBoolVar(f"iso_{entity}_{day}_{p}")
+            model.AddBoolAnd(and_terms).OnlyEnforceIf(iso)
+            model.AddBoolOr(or_terms).OnlyEnforceIf(iso.Not())
+            isolated.append(iso)
+    return gaps, isolated
+
+
 def add_soft_objective(model, Start, Teacher, Room, meta, weights=None, set_objective=True):
     """Add soft penalties. Returns dict of penalty vars for reporting.
 
@@ -197,40 +253,15 @@ def add_soft_objective(model, Start, Teacher, Room, meta, weights=None, set_obje
     total_gap_penalty = 0
     total_gap_excess = 0
     gap_vars = []
+    isolated_terms = []
+    need_isolated = bool(weights.get("SC_isolated", 0))
     for sec in sections:
         for day in days:
             if not occ[sec][day]:
                 continue
-            occupied = occ[sec][day]
-            has_any = model.NewBoolVar(f"has_any_{sec}_{day}")
-            model.AddMaxEquality(has_any, [occupied[p] for p in range(1,8)])
-            first = model.NewIntVar(0, 8, f"first_{sec}_{day}")
-            last = model.NewIntVar(0, 8, f"last_{sec}_{day}")
-            min_candidates = []
-            max_candidates = []
-            for p in range(1,8):
-                cand_min = model.NewIntVar(1, 8, f"cand_min_{sec}_{day}_{p}")
-                cand_max = model.NewIntVar(0, 7, f"cand_max_{sec}_{day}_{p}")
-                model.Add(cand_min == p).OnlyEnforceIf(occupied[p])
-                model.Add(cand_min == 8).OnlyEnforceIf(occupied[p].Not())
-                min_candidates.append(cand_min)
-                model.Add(cand_max == p).OnlyEnforceIf(occupied[p])
-                model.Add(cand_max == 0).OnlyEnforceIf(occupied[p].Not())
-                max_candidates.append(cand_max)
-            model.AddMinEquality(first, min_candidates)
-            model.AddMaxEquality(last, max_candidates)
-            first_corr = model.NewIntVar(0, 7, f"firstc_{sec}_{day}")
-            last_corr = model.NewIntVar(0, 7, f"lastc_{sec}_{day}")
-            model.Add(first_corr == 0).OnlyEnforceIf(has_any.Not())
-            model.Add(first_corr == first).OnlyEnforceIf(has_any)
-            model.Add(last_corr == 0).OnlyEnforceIf(has_any.Not())
-            model.Add(last_corr == last).OnlyEnforceIf(has_any)
-            occupied_sum = sum(occupied[p] for p in range(1,8))
-            gaps = model.NewIntVar(0, 7, f"gaps_{sec}_{day}")
-            tmp = model.NewIntVar(-7, 7, f"tmp_gaps_{sec}_{day}")
-            model.Add(tmp == last_corr - first_corr + 1 - occupied_sum)
-            model.Add(gaps == tmp).OnlyEnforceIf(has_any)
-            model.Add(gaps == 0).OnlyEnforceIf(has_any.Not())
+            gaps, isolated = _gap_and_isolated_terms(model, occ[sec], sec, day, need_isolated=need_isolated)
+            if need_isolated:
+                isolated_terms.extend(isolated)
             if weights.get("SC02_gaps",0):
                 total_gap_penalty += gaps
                 gap_vars.append(gaps)
@@ -251,32 +282,14 @@ def add_soft_objective(model, Start, Teacher, Room, meta, weights=None, set_obje
     # user separate from SC02_gaps -- a day could in principle have a low
     # gap-count sum while still containing a lone class stranded between two
     # holes, so this is tracked and weighted independently, not assumed to
-    # be fully implied by SC02_gaps_excess.
-    if weights.get("SC_isolated",0):
-        isolated_terms = []
-        for sec in sections:
-            for day in days:
-                if not occ[sec][day]:
-                    continue
-                occupied = occ[sec][day]
-                for p in range(1, 8):
-                    and_terms = [occupied[p]]
-                    or_terms = [occupied[p].Not()]
-                    if p > 1:
-                        and_terms.append(occupied[p-1].Not())
-                        or_terms.append(occupied[p-1])
-                    if p < 7:
-                        and_terms.append(occupied[p+1].Not())
-                        or_terms.append(occupied[p+1])
-                    iso = model.NewBoolVar(f"iso_{sec}_{day}_{p}")
-                    model.AddBoolAnd(and_terms).OnlyEnforceIf(iso)
-                    model.AddBoolOr(or_terms).OnlyEnforceIf(iso.Not())
-                    isolated_terms.append(iso)
-        if isolated_terms:
-            total_isolated = model.NewIntVar(0, len(isolated_terms), "total_isolated")
-            model.Add(total_isolated == sum(isolated_terms))
-            penalties["SC_isolated"] = total_isolated
-            terms.append(weights["SC_isolated"] * total_isolated)
+    # be fully implied by SC02_gaps_excess. (isolated_terms was already
+    # collected above, in the same per-section/day loop as SC02_gaps, via
+    # the shared _gap_and_isolated_terms helper.)
+    if weights.get("SC_isolated",0) and isolated_terms:
+        total_isolated = model.NewIntVar(0, len(isolated_terms), "total_isolated")
+        model.Add(total_isolated == sum(isolated_terms))
+        penalties["SC_isolated"] = total_isolated
+        terms.append(weights["SC_isolated"] * total_isolated)
 
     # --- SC05: excessive consecutive periods (window of 4+ occupied) per section/day ---
     # Round 3C: was a 3-period window, which fired on ordinary compact runs of

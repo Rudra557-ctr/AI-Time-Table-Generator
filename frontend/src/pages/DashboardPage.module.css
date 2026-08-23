@@ -1,0 +1,119 @@
+.statRow {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.cardTitle {
+  font-size: 15px;
+  margin-bottom: 14px;
+}
+
+.cardHead .cardTitle {
+  margin-bottom: 0;
+}
+
+.dateTag {
+  font-size: 11.5px;
+  color: var(--ink-faint);
+}
+
+.todaySummary {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 8px 4px 4px;
+}
+
+.todayCount {
+  font-size: 40px;
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.todayLabel {
+  font-size: 13px;
+  color: var(--ink-muted);
+  margin-bottom: 10px;
+}
+
+.healthStatus {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: var(--bg-card-muted);
+  border-radius: var(--radius-sm);
+  margin-bottom: 16px;
+}
+
+.healthLabel {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+
+.utilRow {
+  margin-bottom: 14px;
+}
+
+.utilLabel {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12.5px;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+
+.blockerCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--bg-card-muted);
+  border-radius: var(--radius-sm);
+  color: var(--ink-muted);
+  margin-top: 18px;
+}
+
+.blockerValue {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.blockerLabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sectionTitle {
+  font-size: 15px;
+  margin-bottom: 14px;
+}
+
+@media (max-width: 1100px) {
+  .statRow {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

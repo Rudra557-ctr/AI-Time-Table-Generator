@@ -1,0 +1,23 @@
+.sectionTitle {
+  font-size: 14px;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 22px 0 12px;
+}
+
+.sectionTitle:first-child {
+  margin-top: 0;
+}
+
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+@media (max-width: 1000px) {
+  .statGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

@@ -1,0 +1,37 @@
+.banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 13px 15px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.title {
+  font-weight: 600;
+}
+
+.body {
+  margin-top: 4px;
+  opacity: 0.92;
+}
+
+.body ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+.ok {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+.warn {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.error {
+  background: var(--error-soft);
+  color: var(--error);
+}

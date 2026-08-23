@@ -2,18 +2,36 @@
 
   POST /api/upload                  -> ZIP/CSV/XLSX -> normalize (adapter.py fuzzy mapping) -> report/audit
   POST /api/solve/{job_id}          -> full CP-SAT solve (hard, then hinted soft) on the job's normalized/ folder
+                                        optional JSON body {"weights": {...}} overrides soft.DEFAULT_WEIGHTS
+                                        (merged, not replaced -- omitted keys keep their default)
   POST /api/resolve/{job_id}        -> dynamic re-solve: upload only the changed file(s); re-solves
                                         minimizing deviation from the job's PREVIOUS solve
                                         (solve_pipeline.solve_incremental_resolve) instead of
                                         re-deciding the whole timetable -- requires /api/solve first
+  POST /api/optimize/{job_id}       -> re-optimize an already-valid schedule for compactness
+                                        (solve_pipeline.solve_deep_optimize): a Lantiv-inspired local
+                                        gap-repair pass (lns_gap_repair -- worst-section-first, escalating
+                                        time budget, CP-SAT proves every repair), warm-started throughout --
+                                        NOT stability-constrained like /api/resolve, since the point is to
+                                        let structure change freely. Default (?polish=false): gap-repair
+                                        only, ~2-2.5min, validated ~80% fewer internal gaps on a real
+                                        32-section dataset. ?polish=true also runs faculty-compactness +
+                                        preference polish afterward (90s/90s budgets, the ones actually
+                                        shown to converge) -- adds ~3min more; skip it under time pressure,
+                                        it's an explicit opt-in either way, not the /api/solve default
+                                        (which stays fast). Requires /api/solve first.
   GET  /api/status/{job_id}
   GET  /api/download/{job_id}, /api/download_class/{job_id}/{section}
+  GET  /api/weights/defaults        -> soft.DEFAULT_WEIGHTS, so the frontend never hardcodes them separately
+  GET  /api/data/{job_id}/{dataset} -> normalized/{dataset}.csv as JSON rows (read-only; dataset in adapter.CANONICAL)
+  GET  /api/report/{job_id}         -> gap_stats.compute_stats on the job's generated_timetable.csv (409 if no solve yet)
+  GET  /api/precheck/{job_id}       -> quick_solvability_check standalone (no solve side effect)
 
 Use ?fill=true on upload to fill missing required datasets from the repo's base SIH
 dataset (demo convenience); without it, missing datasets stay missing and the solve
 will fail loudly with whatever error the solver itself raises on incomplete data.
 """
-from fastapi import FastAPI, UploadFile, File, BackgroundTasks, Request
+from fastapi import FastAPI, UploadFile, File, BackgroundTasks, Request, Body
 from fastapi.responses import FileResponse, JSONResponse, HTMLResponse
 import pathlib
 import shutil
@@ -230,7 +248,8 @@ _SOLVED_STATUSES = {"OPTIMAL_SOFT", "FEASIBLE_SOFT", "HARD_ONLY_FALLBACK"}
 
 @app.post("/api/solve/{job_id}")
 async def solve(job_id: str, background_tasks: BackgroundTasks,
-                 hard_time_limit: float = 150.0, soft_time_limit: float = 120.0):
+                 hard_time_limit: float = 150.0, soft_time_limit: float = 120.0,
+                 weights: dict | None = Body(default=None)):
     job_dir = UPLOAD_ROOT / job_id
     if not job_dir.exists():
         return JSONResponse({"error": "job not found"}, status_code=404)
@@ -247,12 +266,19 @@ async def solve(job_id: str, background_tasks: BackgroundTasks,
             status_code=422,
         )
 
+    from sih_solver.soft import DEFAULT_WEIGHTS
+    # Merge over DEFAULT_WEIGHTS rather than replacing it outright — soft.py's
+    # add_soft_objective looks up each term with weights.get(key, 0), so a
+    # partial payload (e.g. a UI that only exposes 10 of the 12 keys) would
+    # otherwise silently zero out the terms it didn't send.
+    merged_weights = {**DEFAULT_WEIGHTS, **(weights or {})}
+
     def run_solve():
         try:
             from sih_solver.solve_pipeline import solve_hard_then_soft
 
             result = solve_hard_then_soft(str(normalized_dir), hard_time_limit=hard_time_limit,
-                                           soft_time_limit=soft_time_limit)
+                                           soft_time_limit=soft_time_limit, weights=merged_weights)
             solver, Start, Teacher, Room, meta = result["solver"], result["Start"], result["Teacher"], result["Room"], result["meta"]
             solved = result["status"] in _SOLVED_STATUSES
             out_csv = _write_timetable_and_grids(job_dir, solver, Start, Teacher, Room, meta, solved)
@@ -263,6 +289,7 @@ async def solve(job_id: str, background_tasks: BackgroundTasks,
                 "hard_seconds": round(result["hard_seconds"], 1), "soft_seconds": round(result["soft_seconds"], 1),
                 "objective": result["objective"],
                 "warnings": check["warnings"],
+                "weights_used": merged_weights,
                 "output": str(out_csv) if solved else None, "dir": str(job_dir),
             }
             jobs[job_id].update(payload)
@@ -369,6 +396,82 @@ async def resolve(job_id: str, background_tasks: BackgroundTasks, files: list[Up
     return {"job_id": job_id, "status": "resolving", "poll": f"/api/status/{job_id}", "warnings": check["warnings"]}
 
 
+# ---------------------------------------------------------------------------
+# Optimize further — re-optimize an ALREADY-VALID schedule for compactness
+# (solve_deep_optimize), warm-started from it rather than re-solving hard
+# constraints from scratch. Deliberately separate from /api/solve: validated
+# on a real 32-section dataset to meaningfully cut gaps (25%) and isolated
+# single-period classes, but takes ~8 minutes by default -- too slow to be
+# the default path for every Generate click, so it's an explicit opt-in
+# instead of a blended time-budget slider.
+# ---------------------------------------------------------------------------
+
+@app.post("/api/optimize/{job_id}")
+async def optimize(job_id: str, background_tasks: BackgroundTasks,
+                    lns_max_rounds: int = 20, tier2_time_limit: float = 90.0,
+                    tier3_time_limit: float = 90.0, polish: bool = False):
+    job_dir = UPLOAD_ROOT / job_id
+    if not job_dir.exists():
+        return JSONResponse({"error": "job not found"}, status_code=404)
+    previous_csv = job_dir / "generated_timetable.csv"
+    if not previous_csv.exists():
+        return JSONResponse({"error": "no existing solve for this job — call /api/solve first"}, status_code=400)
+    normalized_dir = job_dir / "normalized"
+    previous_snapshot = job_dir / "generated_timetable_previous.csv"
+    shutil.copy(previous_csv, previous_snapshot)
+
+    def run_optimize():
+        try:
+            from sih_solver.solve_pipeline import solve_deep_optimize
+
+            result = solve_deep_optimize(
+                str(normalized_dir), str(previous_snapshot),
+                lns_max_rounds=lns_max_rounds,
+                tier_time_limits=(tier2_time_limit, tier3_time_limit),
+                run_faculty_preference_polish=polish,
+            )
+            total_seconds = round(result["soft_seconds"], 1) if result.get("soft_seconds") is not None else None
+            lns_info = {
+                "lns_rounds": result.get("lns_rounds"),
+                "lns_objective": result.get("lns_objective"),
+                "lns_starting_objective": result.get("lns_starting_objective"),
+                "lns_seconds": result.get("lns_seconds"),
+            }
+            if result["status"] == "OPTIMIZE_FAILED":
+                payload = {
+                    "status": "OPTIMIZE_FAILED",
+                    "tier_results": result["tier_results"], "final_tier_reached": None,
+                    "total_seconds": total_seconds,
+                    "output": str(previous_csv), "dir": str(job_dir),
+                    **lns_info,
+                }
+            else:
+                solver, Start, Teacher, Room, meta = result["solver"], result["Start"], result["Teacher"], result["Room"], result["meta"]
+                out_csv = _write_timetable_and_grids(job_dir, solver, Start, Teacher, Room, meta, solved=True)
+                payload = {
+                    "status": "OPTIMIZED",
+                    "soft_status": result["soft_status"],
+                    "objective": result["objective"],
+                    "tier_results": result["tier_results"], "final_tier_reached": result["final_tier_reached"],
+                    "total_seconds": total_seconds,
+                    "output": str(out_csv), "dir": str(job_dir),
+                    **lns_info,
+                }
+            jobs[job_id].update(payload)
+            _write_status(job_dir, jobs[job_id])
+        except Exception as e:
+            import traceback
+            payload = {"status": f"ERROR: {e}", "trace": traceback.format_exc(), "dir": str(job_dir)}
+            jobs[job_id].update(payload)
+            _write_status(job_dir, jobs[job_id])
+            print(traceback.format_exc())
+
+    background_tasks.add_task(run_optimize)
+    jobs[job_id] = {**jobs.get(job_id, {}), "status": "optimizing", "dir": str(job_dir)}
+    _write_status(job_dir, jobs[job_id])
+    return {"job_id": job_id, "status": "optimizing", "poll": f"/api/status/{job_id}"}
+
+
 @app.get("/api/status/{job_id}")
 def status(job_id: str):
     j = jobs.get(job_id)
@@ -399,3 +502,62 @@ def download_class(job_id: str, section: str):
     if not p.exists():
         return JSONResponse({"error": "not found"}, status_code=404)
     return FileResponse(str(p), filename=f"{section}.csv")
+
+
+# ---------------------------------------------------------------------------
+# Read-only helpers for the frontend: soft-weight defaults (so the UI never
+# hardcodes them separately from soft.py), normalized dataset rows (so
+# Sections/Faculty/Rooms/Courses views show real uploaded data, not
+# fabricated placeholders), and post-solve gap/compactness stats (wraps the
+# already-independent gap_stats.py module — same numbers PLAN.md's own
+# validation runs use, not a UI-side recomputation).
+# ---------------------------------------------------------------------------
+
+@app.get("/api/weights/defaults")
+def weights_defaults():
+    from sih_solver.soft import DEFAULT_WEIGHTS
+    return DEFAULT_WEIGHTS
+
+
+@app.get("/api/precheck/{job_id}")
+def precheck(job_id: str):
+    """Same quick_solvability_check /api/solve runs before committing to a
+    full CP-SAT solve, exposed standalone (GET, no side effects) so the
+    Dashboard/Conflicts screens can show real blocker/warning counts without
+    triggering a solve just to find out."""
+    job_dir = UPLOAD_ROOT / job_id
+    normalized_dir = job_dir / "normalized"
+    if not normalized_dir.exists():
+        return JSONResponse({"error": "no normalized data for this job yet — call /api/upload first"}, status_code=404)
+    from sih_solver.dataset import quick_solvability_check
+    check = quick_solvability_check(normalized_dir)
+    return check
+
+
+@app.get("/api/data/{job_id}/{dataset}")
+def dataset_rows(job_id: str, dataset: str):
+    from sih_solver.adapter import CANONICAL
+    if dataset not in CANONICAL:
+        return JSONResponse({"error": f"unknown dataset '{dataset}'"}, status_code=404)
+    p = UPLOAD_ROOT / job_id / "normalized" / f"{dataset}.csv"
+    if not p.exists():
+        return JSONResponse({"error": f"{dataset}.csv not present for this job"}, status_code=404)
+    with open(p, newline="", encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+    return {"dataset": dataset, "count": len(rows), "rows": rows}
+
+
+@app.get("/api/report/{job_id}")
+def report(job_id: str):
+    job_dir = UPLOAD_ROOT / job_id
+    timetable_csv = job_dir / "generated_timetable.csv"
+    time_slots_csv = job_dir / "normalized" / "time_slots.csv"
+    if not timetable_csv.exists():
+        return JSONResponse({"error": "no completed solve for this job yet — call /api/solve first"}, status_code=409)
+    if not time_slots_csv.exists():
+        return JSONResponse({"error": "time_slots.csv missing from this job's normalized data"}, status_code=404)
+    from sih_solver.gap_stats import compute_stats
+    with open(time_slots_csv, newline="", encoding="utf-8") as f:
+        time_slots_rows = list(csv.DictReader(f))
+    stats = compute_stats(timetable_csv, time_slots_rows)
+    return stats

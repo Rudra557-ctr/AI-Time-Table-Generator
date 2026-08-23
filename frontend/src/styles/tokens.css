@@ -1,0 +1,100 @@
+:root {
+  /* Surfaces */
+  --bg: #f4f6f9;
+  --bg-sidebar: #ffffff;
+  --bg-card: #ffffff;
+  --bg-card-muted: #f6f7f9;
+  --border: #e3e6ea;
+  --border-strong: #cbd1d9;
+
+  /* Text */
+  --ink: #17191d;
+  --ink-muted: #666c76;
+  --ink-faint: #9298a1;
+
+  /* Accent (primary interactive) — used sparingly, not as a fill hue */
+  --accent: #2f5fd6;
+  --accent-deep: #24499f;
+  --accent-soft: #e8edfa;
+  --on-accent: #ffffff;
+
+  /* Semantic (separate from the accent hue) */
+  --ok: #1f8b4c;
+  --ok-soft: #e6f4ea;
+  --warn: #a6650f;
+  --warn-soft: #faf0dc;
+  --error: #b3261e;
+  --error-soft: #fbe9e7;
+
+  /* Solver console — plain dark instrument panel, independent of theme */
+  --console-bg: #14161a;
+  --console-bg-2: #1b1e23;
+  --console-border: #2b2f36;
+  --console-text: #e3e5e8;
+  --console-muted: #7c828c;
+  --console-accent: #7ea2f2;
+  --console-ok: #4caf7d;
+  --console-warn: #d3a44f;
+
+  /* Flat by design: thin borders do the separating, not shadows/rounding */
+  --radius-sm: 4px;
+  --radius: 6px;
+  --radius-lg: 6px;
+  --shadow-card: none;
+  --shadow-pop: none;
+
+  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #101214;
+    --bg-sidebar: #16181b;
+    --bg-card: #16181b;
+    --bg-card-muted: #1b1e21;
+    --border: #2a2d31;
+    --border-strong: #383c42;
+
+    --ink: #e7e8ea;
+    --ink-muted: #9298a1;
+    --ink-faint: #6b7078;
+
+    --accent: #7ea2f2;
+    --accent-deep: #a4bff6;
+    --accent-soft: #1f2b47;
+    --on-accent: #0d1220;
+
+    --ok: #57b98a;
+    --ok-soft: #16261d;
+    --warn: #d3a44f;
+    --warn-soft: #2e2413;
+    --error: #e0776e;
+    --error-soft: #2e1917;
+  }
+}
+
+:root[data-theme='dark'] {
+  --bg: #101214;
+  --bg-sidebar: #16181b;
+  --bg-card: #16181b;
+  --bg-card-muted: #1b1e21;
+  --border: #2a2d31;
+  --border-strong: #383c42;
+
+  --ink: #e7e8ea;
+  --ink-muted: #9298a1;
+  --ink-faint: #6b7078;
+
+  --accent: #7ea2f2;
+  --accent-deep: #a4bff6;
+  --accent-soft: #1f2b47;
+  --on-accent: #0d1220;
+
+  --ok: #57b98a;
+  --ok-soft: #16261d;
+  --warn: #d3a44f;
+  --warn-soft: #2e2413;
+  --error: #e0776e;
+  --error-soft: #2e1917;
+}

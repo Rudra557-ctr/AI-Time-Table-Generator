@@ -1,0 +1,78 @@
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  padding: 40px 20px;
+  border: 1.5px dashed var(--border-strong);
+  border-radius: var(--radius);
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: border-color 150ms ease, background-color 150ms ease;
+  margin-bottom: 16px;
+}
+
+.dropzone:hover,
+.dragOver {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+}
+
+.dropTitle {
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.fileCount {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.fileList {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fileList li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--bg-card-muted);
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+}
+
+.removeBtn {
+  background: none;
+  border: none;
+  color: var(--error);
+  font-size: 11.5px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.fillRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--ink-muted);
+  margin-bottom: 16px;
+}
+
+.sectionTitle {
+  font-size: 15px;
+  margin: 28px 0 12px;
+}
+
+.warningsBlock {
+  margin-top: 16px;
+}

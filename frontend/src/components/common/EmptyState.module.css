@@ -1,0 +1,37 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  padding: 40px 20px;
+  color: var(--ink-muted);
+}
+
+.iconWrap {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--bg-card-muted);
+  border: 1px solid var(--border);
+  color: var(--ink-faint);
+  margin-bottom: 6px;
+}
+
+.title {
+  font-weight: 600;
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.desc {
+  font-size: 13px;
+  max-width: 42ch;
+}
+
+.action {
+  margin-top: 10px;
+}
