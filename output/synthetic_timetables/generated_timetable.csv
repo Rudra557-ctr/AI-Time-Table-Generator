@@ -1,0 +1,85 @@
+offering_id,course_id,course_name,section_id,session,slot_id,day,start_time,end_time,room_id,room_name,faculty_id,faculty_name
+O0001,C_IT101,Information Technology Fundamentals I,S_IT_1_A,1,FRI_0900,FRI,09:00,10:00,SR004,Classroom-04,SF007,Dr. Aman Nair
+O0001,C_IT101,Information Technology Fundamentals I,S_IT_1_A,2,TUE_1500,TUE,15:00,16:00,SR004,Classroom-04,SF007,Dr. Aman Nair
+O0001,C_IT101,Information Technology Fundamentals I,S_IT_1_A,3,MON_1100,MON,11:00,12:00,SR004,Classroom-04,SF007,Dr. Aman Nair
+O0001,C_IT101,Information Technology Fundamentals I,S_IT_1_A,4,WED_1200,WED,12:00,13:00,SR004,Classroom-04,SF007,Dr. Aman Nair
+O0002,C_IT102,Applied Mathematics,S_IT_1_A,1,THU_1400,THU,14:00,15:00,SR004,Classroom-04,SF006,Dr. Arjun Reddy
+O0002,C_IT102,Applied Mathematics,S_IT_1_A,2,FRI_1000,FRI,10:00,11:00,SR004,Classroom-04,SF006,Dr. Arjun Reddy
+O0002,C_IT102,Applied Mathematics,S_IT_1_A,3,WED_1400,WED,14:00,15:00,SR004,Classroom-04,SF006,Dr. Arjun Reddy
+O0003,C_IT103,Information Technology Core Principles,S_IT_1_A,1,WED_1500,WED,15:00,16:00,SR004,Classroom-04,SF005,Dr. Meera Menon
+O0003,C_IT103,Information Technology Core Principles,S_IT_1_A,2,THU_1500,THU,15:00,16:00,SR004,Classroom-04,SF005,Dr. Meera Menon
+O0003,C_IT103,Information Technology Core Principles,S_IT_1_A,3,FRI_1100,FRI,11:00,12:00,SR004,Classroom-04,SF005,Dr. Meera Menon
+O0004,C_IT104,Information Technology Practical Lab,S_IT_1_A,1,MON_1400,MON,14:00,15:00,SR008,Computer Lab-2,SF006,Dr. Arjun Reddy
+O0005,C_IT105,Technical Communication,S_IT_1_A,1,WED_1600,WED,16:00,17:00,SR004,Classroom-04,SF007,Dr. Aman Nair
+O0005,C_IT105,Technical Communication,S_IT_1_A,2,TUE_1400,TUE,14:00,15:00,SR004,Classroom-04,SF007,Dr. Aman Nair
+O0006,C_IT201,Information Technology Fundamentals II,S_IT_2_A,1,WED_1100,WED,11:00,12:00,SR002,Classroom-02,SF001,Dr. Vikram Pillai
+O0006,C_IT201,Information Technology Fundamentals II,S_IT_2_A,2,MON_1500,MON,15:00,16:00,SR002,Classroom-02,SF001,Dr. Vikram Pillai
+O0006,C_IT201,Information Technology Fundamentals II,S_IT_2_A,3,FRI_1400,FRI,14:00,15:00,SR002,Classroom-02,SF001,Dr. Vikram Pillai
+O0006,C_IT201,Information Technology Fundamentals II,S_IT_2_A,4,THU_1200,THU,12:00,13:00,SR003,Classroom-03,SF001,Dr. Vikram Pillai
+O0007,C_IT202,Information Technology Systems Design,S_IT_2_A,1,MON_1600,MON,16:00,17:00,SR004,Classroom-04,SF006,Dr. Arjun Reddy
+O0007,C_IT202,Information Technology Systems Design,S_IT_2_A,2,THU_1000,THU,10:00,11:00,SR003,Classroom-03,SF006,Dr. Arjun Reddy
+O0007,C_IT202,Information Technology Systems Design,S_IT_2_A,3,TUE_1100,TUE,11:00,12:00,SR002,Classroom-02,SF006,Dr. Arjun Reddy
+O0008,C_IT203,Information Technology Analysis Methods,S_IT_2_A,1,FRI_0900,FRI,09:00,10:00,SR003,Classroom-03,SF008,Dr. Rohan Rao
+O0008,C_IT203,Information Technology Analysis Methods,S_IT_2_A,2,TUE_1000,TUE,10:00,11:00,SR002,Classroom-02,SF008,Dr. Rohan Rao
+O0008,C_IT203,Information Technology Analysis Methods,S_IT_2_A,3,THU_1400,THU,14:00,15:00,SR002,Classroom-02,SF008,Dr. Rohan Rao
+O0009,C_IT204,Information Technology Advanced Lab,S_IT_2_A,1,FRI_1100,FRI,11:00,12:00,SR007,Computer Lab-1,SF007,Dr. Aman Nair
+O0010,C_MECH101,Mechanical Engineering Fundamentals I,S_MECH_1_A,1,FRI_1000,FRI,10:00,11:00,SR002,Classroom-02,SF009,Dr. Karan Rao
+O0010,C_MECH101,Mechanical Engineering Fundamentals I,S_MECH_1_A,2,MON_1100,MON,11:00,12:00,SR003,Classroom-03,SF009,Dr. Karan Rao
+O0010,C_MECH101,Mechanical Engineering Fundamentals I,S_MECH_1_A,3,THU_1400,THU,14:00,15:00,SR006,Classroom-06,SF009,Dr. Karan Rao
+O0010,C_MECH101,Mechanical Engineering Fundamentals I,S_MECH_1_A,4,WED_1200,WED,12:00,13:00,SR002,Classroom-02,SF009,Dr. Karan Rao
+O0011,C_MECH102,Applied Mathematics,S_MECH_1_A,1,TUE_1600,TUE,16:00,17:00,SR006,Classroom-06,SF009,Dr. Karan Rao
+O0011,C_MECH102,Applied Mathematics,S_MECH_1_A,2,THU_1500,THU,15:00,16:00,SR003,Classroom-03,SF009,Dr. Karan Rao
+O0011,C_MECH102,Applied Mathematics,S_MECH_1_A,3,WED_1000,WED,10:00,11:00,SR006,Classroom-06,SF009,Dr. Karan Rao
+O0012,C_MECH103,Mechanical Engineering Core Principles,S_MECH_1_A,1,THU_1600,THU,16:00,17:00,SR002,Classroom-02,SF012,Dr. Nikhil Chatterjee
+O0012,C_MECH103,Mechanical Engineering Core Principles,S_MECH_1_A,2,FRI_1100,FRI,11:00,12:00,SR006,Classroom-06,SF012,Dr. Nikhil Chatterjee
+O0012,C_MECH103,Mechanical Engineering Core Principles,S_MECH_1_A,3,MON_1000,MON,10:00,11:00,SR002,Classroom-02,SF012,Dr. Nikhil Chatterjee
+O0013,C_MECH104,Mechanical Engineering Practical Lab,S_MECH_1_A,1,WED_1400,WED,14:00,15:00,SR009,Workshop-1,SF011,Dr. Priya Nair
+O0014,C_MECH105,Technical Communication,S_MECH_1_A,1,WED_1100,WED,11:00,12:00,SR006,Classroom-06,SF009,Dr. Karan Rao
+O0014,C_MECH105,Technical Communication,S_MECH_1_A,2,TUE_1500,TUE,15:00,16:00,SR002,Classroom-02,SF009,Dr. Karan Rao
+O0015,C_MECH201,Mechanical Engineering Fundamentals II,S_MECH_2_A,1,FRI_1100,FRI,11:00,12:00,SR003,Classroom-03,SF014,Dr. Nikhil Nair
+O0015,C_MECH201,Mechanical Engineering Fundamentals II,S_MECH_2_A,2,TUE_1100,TUE,11:00,12:00,SR003,Classroom-03,SF014,Dr. Nikhil Nair
+O0015,C_MECH201,Mechanical Engineering Fundamentals II,S_MECH_2_A,3,WED_0900,WED,09:00,10:00,SR006,Classroom-06,SF014,Dr. Nikhil Nair
+O0015,C_MECH201,Mechanical Engineering Fundamentals II,S_MECH_2_A,4,MON_1600,MON,16:00,17:00,SR003,Classroom-03,SF014,Dr. Nikhil Nair
+O0016,C_MECH202,Mechanical Engineering Systems Design,S_MECH_2_A,1,TUE_1200,TUE,12:00,13:00,SR003,Classroom-03,SF014,Dr. Nikhil Nair
+O0016,C_MECH202,Mechanical Engineering Systems Design,S_MECH_2_A,2,WED_1100,WED,11:00,12:00,SR003,Classroom-03,SF014,Dr. Nikhil Nair
+O0016,C_MECH202,Mechanical Engineering Systems Design,S_MECH_2_A,3,FRI_0900,FRI,09:00,10:00,SR006,Classroom-06,SF014,Dr. Nikhil Nair
+O0017,C_MECH203,Mechanical Engineering Analysis Methods,S_MECH_2_A,1,WED_1200,WED,12:00,13:00,SR003,Classroom-03,SF014,Dr. Nikhil Nair
+O0017,C_MECH203,Mechanical Engineering Analysis Methods,S_MECH_2_A,2,MON_1500,MON,15:00,16:00,SR004,Classroom-04,SF014,Dr. Nikhil Nair
+O0017,C_MECH203,Mechanical Engineering Analysis Methods,S_MECH_2_A,3,TUE_1000,TUE,10:00,11:00,SR006,Classroom-06,SF014,Dr. Nikhil Nair
+O0018,C_MECH204,Mechanical Engineering Advanced Lab,S_MECH_2_A,1,THU_0900,THU,09:00,10:00,SR009,Workshop-1,SF013,Dr. Meera Kapoor
+O0019,C_CIVIL101,Civil Engineering Fundamentals I,S_CIVIL_1_A,1,THU_1400,THU,14:00,15:00,SR005,Classroom-05,SF020,Dr. Neha Desai
+O0019,C_CIVIL101,Civil Engineering Fundamentals I,S_CIVIL_1_A,2,MON_1600,MON,16:00,17:00,SR006,Classroom-06,SF020,Dr. Neha Desai
+O0019,C_CIVIL101,Civil Engineering Fundamentals I,S_CIVIL_1_A,3,WED_1400,WED,14:00,15:00,SR006,Classroom-06,SF020,Dr. Neha Desai
+O0019,C_CIVIL101,Civil Engineering Fundamentals I,S_CIVIL_1_A,4,TUE_1600,TUE,16:00,17:00,SR003,Classroom-03,SF020,Dr. Neha Desai
+O0020,C_CIVIL102,Applied Mathematics,S_CIVIL_1_A,1,WED_1600,WED,16:00,17:00,SR003,Classroom-03,SF015,Dr. Nikhil Rao
+O0020,C_CIVIL102,Applied Mathematics,S_CIVIL_1_A,2,FRI_1200,FRI,12:00,13:00,SR002,Classroom-02,SF015,Dr. Nikhil Rao
+O0020,C_CIVIL102,Applied Mathematics,S_CIVIL_1_A,3,TUE_1500,TUE,15:00,16:00,SR006,Classroom-06,SF015,Dr. Nikhil Rao
+O0021,C_CIVIL103,Civil Engineering Core Principles,S_CIVIL_1_A,1,MON_1500,MON,15:00,16:00,SR006,Classroom-06,SF019,Dr. Rahul Chatterjee
+O0021,C_CIVIL103,Civil Engineering Core Principles,S_CIVIL_1_A,2,FRI_1400,FRI,14:00,15:00,SR003,Classroom-03,SF019,Dr. Rahul Chatterjee
+O0021,C_CIVIL103,Civil Engineering Core Principles,S_CIVIL_1_A,3,THU_1500,THU,15:00,16:00,SR006,Classroom-06,SF019,Dr. Rahul Chatterjee
+O0022,C_CIVIL104,Civil Engineering Practical Lab,S_CIVIL_1_A,1,THU_1100,THU,11:00,12:00,SR010,Drawing Hall-1,SF016,Dr. Ishita Shah
+O0023,C_CIVIL105,Technical Communication,S_CIVIL_1_A,1,TUE_1400,TUE,14:00,15:00,SR006,Classroom-06,SF015,Dr. Nikhil Rao
+O0023,C_CIVIL105,Technical Communication,S_CIVIL_1_A,2,WED_1500,WED,15:00,16:00,SR006,Classroom-06,SF015,Dr. Nikhil Rao
+O0024,C_CIVIL201,Civil Engineering Fundamentals II,S_CIVIL_2_A,1,THU_1200,THU,12:00,13:00,SR002,Classroom-02,SF017,Dr. Aman Shah
+O0024,C_CIVIL201,Civil Engineering Fundamentals II,S_CIVIL_2_A,2,WED_1200,WED,12:00,13:00,SR006,Classroom-06,SF017,Dr. Aman Shah
+O0024,C_CIVIL201,Civil Engineering Fundamentals II,S_CIVIL_2_A,3,MON_1500,MON,15:00,16:00,SR003,Classroom-03,SF017,Dr. Aman Shah
+O0024,C_CIVIL201,Civil Engineering Fundamentals II,S_CIVIL_2_A,4,TUE_1600,TUE,16:00,17:00,SR004,Classroom-04,SF017,Dr. Aman Shah
+O0025,C_CIVIL202,Civil Engineering Systems Design,S_CIVIL_2_A,1,MON_1600,MON,16:00,17:00,SR002,Classroom-02,SF017,Dr. Aman Shah
+O0025,C_CIVIL202,Civil Engineering Systems Design,S_CIVIL_2_A,2,THU_1600,THU,16:00,17:00,SR006,Classroom-06,SF017,Dr. Aman Shah
+O0025,C_CIVIL202,Civil Engineering Systems Design,S_CIVIL_2_A,3,WED_1400,WED,14:00,15:00,SR003,Classroom-03,SF017,Dr. Aman Shah
+O0026,C_CIVIL203,Civil Engineering Analysis Methods,S_CIVIL_2_A,1,TUE_1500,TUE,15:00,16:00,SR003,Classroom-03,SF019,Dr. Rahul Chatterjee
+O0026,C_CIVIL203,Civil Engineering Analysis Methods,S_CIVIL_2_A,2,FRI_0900,FRI,09:00,10:00,SR002,Classroom-02,SF019,Dr. Rahul Chatterjee
+O0026,C_CIVIL203,Civil Engineering Analysis Methods,S_CIVIL_2_A,3,WED_1100,WED,11:00,12:00,SR001,Classroom-01,SF019,Dr. Rahul Chatterjee
+O0027,C_CIVIL204,Civil Engineering Advanced Lab,S_CIVIL_2_A,1,THU_1400,THU,14:00,15:00,SR010,Drawing Hall-1,SF017,Dr. Aman Shah
+O0028,C_OAE01,Environmental Studies,S_IT_2_A,1,THU_1100,THU,11:00,12:00,SR003,Classroom-03,SF008,Dr. Rohan Rao
+O0028,C_OAE01,Environmental Studies,S_IT_2_A,2,WED_1000,WED,10:00,11:00,SR002,Classroom-02,SF008,Dr. Rohan Rao
+O0029,C_OAE01,Environmental Studies,S_MECH_2_A,1,THU_1100,THU,11:00,12:00,SR006,Classroom-06,SF002,Dr. Divya Iyer
+O0029,C_OAE01,Environmental Studies,S_MECH_2_A,2,WED_1000,WED,10:00,11:00,SR004,Classroom-04,SF002,Dr. Divya Iyer
+O0030,C_OAE01,Environmental Studies,S_CIVIL_2_A,1,THU_1100,THU,11:00,12:00,SR002,Classroom-02,SF001,Dr. Vikram Pillai
+O0030,C_OAE01,Environmental Studies,S_CIVIL_2_A,2,WED_1000,WED,10:00,11:00,SR003,Classroom-03,SF001,Dr. Vikram Pillai
+O0031,C_OAE02,Entrepreneurship Basics,S_IT_2_A,1,MON_1400,MON,14:00,15:00,SR006,Classroom-06,SF001,Dr. Vikram Pillai
+O0031,C_OAE02,Entrepreneurship Basics,S_IT_2_A,2,FRI_1000,FRI,10:00,11:00,SR003,Classroom-03,SF001,Dr. Vikram Pillai
+O0032,C_OAE02,Entrepreneurship Basics,S_MECH_2_A,1,MON_1400,MON,14:00,15:00,SR003,Classroom-03,SF003,Dr. Vikram Chatterjee
+O0032,C_OAE02,Entrepreneurship Basics,S_MECH_2_A,2,FRI_1000,FRI,10:00,11:00,SR006,Classroom-06,SF003,Dr. Vikram Chatterjee
+O0033,C_OAE02,Entrepreneurship Basics,S_CIVIL_2_A,1,MON_1400,MON,14:00,15:00,SR002,Classroom-02,SF007,Dr. Aman Nair
+O0033,C_OAE02,Entrepreneurship Basics,S_CIVIL_2_A,2,FRI_1000,FRI,10:00,11:00,SR005,Classroom-05,SF007,Dr. Aman Nair

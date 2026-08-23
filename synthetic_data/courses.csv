@@ -1,0 +1,30 @@
+course_id,course_code,course_name,department_id,course_type,course_category,credits,weekly_hours,sessions_per_week,session_duration,requires_lab,required_room_type,min_room_capacity,equipment_required
+C_IT101,IT101,Information Technology Fundamentals I,D01,THEORY,CORE,3,4,4,1,False,CLASSROOM,60,
+C_IT102,IT102,Applied Mathematics,D01,THEORY,CORE,3,3,3,1,False,CLASSROOM,60,
+C_IT103,IT103,Information Technology Core Principles,D01,THEORY,CORE,3,3,3,1,False,CLASSROOM,60,
+C_IT104,IT104,Information Technology Practical Lab,D01,LAB,CORE,1,2,1,2,True,COMPUTER_LAB,35,COMPUTERS
+C_IT105,IT105,Technical Communication,D01,THEORY,CORE,3,2,2,1,False,CLASSROOM,60,
+C_IT201,IT201,Information Technology Fundamentals II,D01,THEORY,CORE,3,4,4,1,False,CLASSROOM,60,
+C_IT202,IT202,Information Technology Systems Design,D01,THEORY,CORE,3,3,3,1,False,CLASSROOM,60,
+C_IT203,IT203,Information Technology Analysis Methods,D01,THEORY,CORE,3,3,3,1,False,CLASSROOM,60,
+C_IT204,IT204,Information Technology Advanced Lab,D01,LAB,CORE,1,2,1,2,True,COMPUTER_LAB,35,COMPUTERS
+C_MECH101,MECH101,Mechanical Engineering Fundamentals I,D02,THEORY,CORE,3,4,4,1,False,CLASSROOM,60,
+C_MECH102,MECH102,Applied Mathematics,D02,THEORY,CORE,3,3,3,1,False,CLASSROOM,60,
+C_MECH103,MECH103,Mechanical Engineering Core Principles,D02,THEORY,CORE,3,3,3,1,False,CLASSROOM,60,
+C_MECH104,MECH104,Mechanical Engineering Practical Lab,D02,LAB,CORE,1,2,1,2,True,WORKSHOP,35,WORKSHOP_TOOLS
+C_MECH105,MECH105,Technical Communication,D02,THEORY,CORE,3,2,2,1,False,CLASSROOM,60,
+C_MECH201,MECH201,Mechanical Engineering Fundamentals II,D02,THEORY,CORE,3,4,4,1,False,CLASSROOM,60,
+C_MECH202,MECH202,Mechanical Engineering Systems Design,D02,THEORY,CORE,3,3,3,1,False,CLASSROOM,60,
+C_MECH203,MECH203,Mechanical Engineering Analysis Methods,D02,THEORY,CORE,3,3,3,1,False,CLASSROOM,60,
+C_MECH204,MECH204,Mechanical Engineering Advanced Lab,D02,LAB,CORE,1,2,1,2,True,WORKSHOP,35,WORKSHOP_TOOLS
+C_CIVIL101,CIVIL101,Civil Engineering Fundamentals I,D03,THEORY,CORE,3,4,4,1,False,CLASSROOM,60,
+C_CIVIL102,CIVIL102,Applied Mathematics,D03,THEORY,CORE,3,3,3,1,False,CLASSROOM,60,
+C_CIVIL103,CIVIL103,Civil Engineering Core Principles,D03,THEORY,CORE,3,3,3,1,False,CLASSROOM,60,
+C_CIVIL104,CIVIL104,Civil Engineering Practical Lab,D03,LAB,CORE,1,2,1,2,True,DRAWING_HALL,35,DRAFTING_TABLES
+C_CIVIL105,CIVIL105,Technical Communication,D03,THEORY,CORE,3,2,2,1,False,CLASSROOM,60,
+C_CIVIL201,CIVIL201,Civil Engineering Fundamentals II,D03,THEORY,CORE,3,4,4,1,False,CLASSROOM,60,
+C_CIVIL202,CIVIL202,Civil Engineering Systems Design,D03,THEORY,CORE,3,3,3,1,False,CLASSROOM,60,
+C_CIVIL203,CIVIL203,Civil Engineering Analysis Methods,D03,THEORY,CORE,3,3,3,1,False,CLASSROOM,60,
+C_CIVIL204,CIVIL204,Civil Engineering Advanced Lab,D03,LAB,CORE,1,2,1,2,True,DRAWING_HALL,35,DRAFTING_TABLES
+C_OAE01,OAE01,Environmental Studies,D01,THEORY,ELECTIVE,2,2,2,1,False,CLASSROOM,25,
+C_OAE02,OAE02,Entrepreneurship Basics,D01,THEORY,ELECTIVE,2,2,2,1,False,CLASSROOM,25,

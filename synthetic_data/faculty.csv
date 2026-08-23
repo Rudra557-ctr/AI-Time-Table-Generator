@@ -1,0 +1,21 @@
+faculty_id,name,department_id,designation,employment_type,max_hours_per_week,max_hours_per_day,min_hours_per_week
+SF001,Dr. Vikram Pillai,D01,Assistant Professor,PERMANENT,20,4,8
+SF002,Dr. Divya Iyer,D01,Associate Professor,PERMANENT,20,4,6
+SF003,Dr. Vikram Chatterjee,D01,Associate Professor,PERMANENT,20,4,8
+SF004,Dr. Asha Pillai,D01,Professor,PERMANENT,18,4,8
+SF005,Dr. Meera Menon,D01,Assistant Professor,PERMANENT,16,4,8
+SF006,Dr. Arjun Reddy,D01,Professor,PERMANENT,16,4,10
+SF007,Dr. Aman Nair,D01,Assistant Professor,PERMANENT,20,4,10
+SF008,Dr. Rohan Rao,D01,Professor,VISITING,16,4,8
+SF009,Dr. Karan Rao,D02,Professor,PERMANENT,20,4,10
+SF010,Dr. Rahul Kapoor,D02,Associate Professor,PERMANENT,20,4,6
+SF011,Dr. Priya Nair,D02,Assistant Professor,PERMANENT,20,4,6
+SF012,Dr. Nikhil Chatterjee,D02,Assistant Professor,PERMANENT,18,4,8
+SF013,Dr. Meera Kapoor,D02,Associate Professor,PERMANENT,20,4,6
+SF014,Dr. Nikhil Nair,D02,Professor,VISITING,20,4,6
+SF015,Dr. Nikhil Rao,D03,Assistant Professor,PERMANENT,20,4,10
+SF016,Dr. Ishita Shah,D03,Associate Professor,PERMANENT,20,4,8
+SF017,Dr. Aman Shah,D03,Assistant Professor,PERMANENT,18,4,10
+SF018,Dr. Vikram Shah,D03,Associate Professor,PERMANENT,20,4,10
+SF019,Dr. Rahul Chatterjee,D03,Assistant Professor,PERMANENT,16,4,6
+SF020,Dr. Neha Desai,D03,Assistant Professor,VISITING,16,4,10

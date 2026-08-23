@@ -20,6 +20,7 @@ CANONICAL = {
     "faculty_courses": ["faculty_id","course_id","qualification_level","preferred"],
     "faculty_availability": ["faculty_id","slot_id","available","preference_score"],
     "room_availability": ["room_id","slot_id","available"],
+    "students": ["student_id","student_name","program_id","branch","year","section_id"],
     "student_enrollments": ["student_id","course_id","enrollment_type"],
     "fixed_events": ["event_id","event_name","day","start_time","end_time","scope"],
     "elective_groups": ["elective_group_id","group_name","elective_type","year","program_scope","minimum_choices","maximum_choices","synchronized"],

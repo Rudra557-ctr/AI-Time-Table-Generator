@@ -1,0 +1,3 @@
+rule_id,rule_name,rule_type,value,active
+SR01,MAX_DAILY_FACULTY_HOURS,HARD,4,true
+SR02,MAX_WEEKLY_FACULTY_HOURS,HARD,20,true

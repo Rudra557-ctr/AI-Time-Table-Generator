@@ -1,0 +1,7 @@
+section_id,program_id,year,section_name,student_count
+S_IT_1_A,P01,1,A,70
+S_IT_2_A,P01,2,A,65
+S_MECH_1_A,P02,1,A,54
+S_MECH_2_A,P02,2,A,59
+S_CIVIL_1_A,P03,1,A,51
+S_CIVIL_2_A,P03,2,A,59

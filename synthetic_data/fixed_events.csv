@@ -1,0 +1,2 @@
+event_id,event_name,day,start_time,end_time,scope
+SYNEV01,Weekly Faculty Meeting,MON,12:00,13:00,ALL_FACULTY

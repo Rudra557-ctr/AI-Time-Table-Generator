@@ -1,0 +1,12 @@
+room_id,room_name,building,floor,room_type,capacity,has_projector,has_computers,has_ac,equipment
+SR001,Classroom-01,A,2,CLASSROOM,75,True,False,True,"PROJECTOR,WHITEBOARD"
+SR002,Classroom-02,A,3,CLASSROOM,65,True,False,True,"PROJECTOR,WHITEBOARD"
+SR003,Classroom-03,A,1,CLASSROOM,65,True,False,True,"PROJECTOR,WHITEBOARD"
+SR004,Classroom-04,B,2,CLASSROOM,70,True,False,True,"PROJECTOR,WHITEBOARD"
+SR005,Classroom-05,B,3,CLASSROOM,75,True,False,True,"PROJECTOR,WHITEBOARD"
+SR006,Classroom-06,B,1,CLASSROOM,65,True,False,True,"PROJECTOR,WHITEBOARD"
+SR007,Computer Lab-1,C,1,COMPUTER_LAB,40,True,True,True,"COMPUTERS,PROJECTOR"
+SR008,Computer Lab-2,C,1,COMPUTER_LAB,40,True,True,True,"COMPUTERS,PROJECTOR"
+SR009,Workshop-1,D,1,WORKSHOP,35,True,False,True,WORKSHOP_TOOLS
+SR010,Drawing Hall-1,D,2,DRAWING_HALL,35,True,False,True,DRAFTING_TABLES
+SR011,Lecture Hall-1,A,1,LECTURE_HALL,120,True,False,True,"PROJECTOR,AUDIO_SYSTEM"

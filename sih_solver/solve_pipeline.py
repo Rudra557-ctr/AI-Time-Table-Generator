@@ -134,9 +134,64 @@ def _tier_expr(penalties, weights, tier_keys):
     return sum(terms) if terms else None
 
 
+def hint_from_csv(csv_path, meta):
+    """Build a {("Start"|"Teacher"|"Room", key): value} hint dict from a
+    previously-generated timetable CSV (the same shape write_csv-style
+    callers produce: offering_id,course_id,section_id,session,slot_id,day,
+    start_time,end_time,room_id,faculty_id), translated through `meta`'s
+    index maps into the integer values CP-SAT variables actually hold.
+    Shared by anything that needs to warm-start or stay-close-to a prior
+    solve — solve_incremental_resolve below, and any one-off comparison
+    script (see PLAN.md Round 3C for the pattern this generalizes)."""
+    import csv
+    rows = list(csv.DictReader(open(csv_path)))
+    hint = {}
+    seen_teacher = set()
+    for r in rows:
+        if r.get("slot_id") in ("UNASSIGNED", "?", ""):
+            continue
+        oid = r["offering_id"]
+        s = int(r["session"]) - 1
+        if r["slot_id"] in meta["slot_to_idx"]:
+            hint[("Start", (oid, s))] = meta["slot_to_idx"][r["slot_id"]]
+        if r["room_id"] in meta["room_to_idx"]:
+            hint[("Room", (oid, s))] = meta["room_to_idx"][r["room_id"]]
+        if oid not in seen_teacher and r["faculty_id"] in meta["fac_to_idx"]:
+            hint[("Teacher", oid)] = meta["fac_to_idx"][r["faculty_id"]]
+            seen_teacher.add(oid)
+    return hint
+
+
+def _stability_expr(model, Start, Teacher, Room, meta, reference):
+    """Sum of BoolVars, one per (Start/Teacher/Room) variable in THIS model
+    that also has an entry in `reference` (a prior solve's hint dict, e.g.
+    from hint_from_csv) -- each 1 iff this model's value for that variable
+    ends up different from the reference value, 0 if it stays the same.
+    A variable with no entry in `reference` (a session/offering that didn't
+    exist in the prior solve -- newly added) has nothing to be stable
+    against and is skipped, not penalized; a reference entry with no
+    matching variable here (removed in the new data) is likewise skipped.
+    Minimizing this sum is "change as little as possible from the previous
+    schedule" -- the actual mechanism behind solve_incremental_resolve's
+    promise to not let one input change cascade through the whole
+    timetable."""
+    changed = []
+    for kind, var_dict in (("Start", Start), ("Teacher", Teacher), ("Room", Room)):
+        for key, var in var_dict.items():
+            prev_val = reference.get((kind, key))
+            if prev_val is None:
+                continue
+            b = model.NewBoolVar(f"changed_{kind}_{key}")
+            model.Add(var != prev_val).OnlyEnforceIf(b)
+            model.Add(var == prev_val).OnlyEnforceIf(b.Not())
+            changed.append(b)
+    return sum(changed) if changed else None
+
+
 def solve_lexicographic_soft(root, hint_vars_vals=None, seed=0,
                               tier_time_limits=(200.0, 100.0, 150.0),
-                              weights=None, num_workers=8):
+                              weights=None, num_workers=8,
+                              stability_reference=None, stability_time_limit=None):
     """Genuine hierarchical/lexicographic soft optimization (PLAN.md Round 3C
     part 2) — see soft.py's module docstring for the diagnosis that motivated
     this (a single weighted sum let SC03_wastage's raw scale dominate 68.5%
@@ -175,6 +230,18 @@ def solve_lexicographic_soft(root, hint_vars_vals=None, seed=0,
     hint_vars_vals: optional {("Start"|"Teacher"|"Room", key): value} dict
     (e.g. from a validated hard-only solve) to warm-start tier 1.
 
+    stability_reference: optional {("Start"|"Teacher"|"Room", key): value}
+    dict (typically hint_from_csv(...) of a job's PREVIOUS solve). When
+    given, a tier 0 is solved FIRST, ahead of even section-day structure:
+    minimize how many sessions differ from `stability_reference` at all
+    (see _stability_expr). This is what makes a re-solve after one input
+    changes behave like "fix what's now broken, leave everything else
+    alone" instead of quietly re-deciding the whole timetable from
+    scratch — the actual "don't let one change cascade" requirement. Also
+    used as tier 0's own AddHint (so the search starts AT the old
+    schedule, not from nothing) unless hint_vars_vals is given instead.
+    stability_time_limit defaults to tier_time_limits[0] if not given.
+
     Returns a dict: status per tier, objective/best_bound/gap per tier,
     the solver + Start/Teacher/Room/meta/penalties FOR THE LAST SUCCESSFUL
     TIER (read the solution from these, not from a stale reference to an
@@ -182,29 +249,40 @@ def solve_lexicographic_soft(root, hint_vars_vals=None, seed=0,
     claims OPTIMAL unless CP-SAT proved it for that tier.
     """
     weights = weights or DEFAULT_WEIGHTS
-    tiers = [
-        ("tier1_section_structure", TIER1_SECTION_STRUCTURE_KEYS),
-        ("tier2_faculty", TIER2_FACULTY_KEYS),
-        ("tier3_rest", TIER3_REST_KEYS),
+    sc_tiers = [
+        ("sc", "tier1_section_structure", TIER1_SECTION_STRUCTURE_KEYS),
+        ("sc", "tier2_faculty", TIER2_FACULTY_KEYS),
+        ("sc", "tier3_rest", TIER3_REST_KEYS),
     ]
+    time_limits = list(tier_time_limits)
+    if stability_reference:
+        sc_tiers.insert(0, ("stability", "tier0_stability", stability_reference))
+        time_limits.insert(0, stability_time_limit if stability_time_limit is not None else tier_time_limits[0])
+    tiers = sc_tiers
+
     tier_results = {}
     total_seconds = 0.0
-    current_hint = dict(hint_vars_vals or {})
-    locked = []  # [(tier_keys, value_found), ...] re-applied fresh in every subsequent tier's model
+    current_hint = dict(hint_vars_vals or stability_reference or {})
+    locked = []  # [(kind, payload, value_found), ...] re-applied fresh in every subsequent tier's model
     last_good = None
 
-    for (label, tier_keys), time_limit in zip(tiers, tier_time_limits):
+    for (kind, label, payload), time_limit in zip(tiers, time_limits):
         model, Start, Teacher, Room, meta = build_full_hard_model(root)
-        for (kind, key), val in current_hint.items():
-            var = {"Start": Start, "Teacher": Teacher, "Room": Room}[kind].get(key)
+        for (hkind, key), val in current_hint.items():
+            var = {"Start": Start, "Teacher": Teacher, "Room": Room}[hkind].get(key)
             if var is not None:
                 model.AddHint(var, val)
         penalties = add_soft_objective(model, Start, Teacher, Room, meta, weights, set_objective=False)
-        for prev_keys, prev_value in locked:
-            prev_expr = _tier_expr(penalties, weights, prev_keys)
+
+        def _build_expr(k, p):
+            return _stability_expr(model, Start, Teacher, Room, meta, p) if k == "stability" \
+                else _tier_expr(penalties, weights, p)
+
+        for prev_kind, prev_payload, prev_value in locked:
+            prev_expr = _build_expr(prev_kind, prev_payload)
             if prev_expr is not None:
                 model.Add(prev_expr <= prev_value)
-        expr = _tier_expr(penalties, weights, tier_keys)
+        expr = _build_expr(kind, payload)
         if expr is None:
             tier_results[label] = {"status": "SKIPPED_EMPTY", "objective": None, "best_bound": None, "seconds": 0.0}
             continue
@@ -221,11 +299,11 @@ def solve_lexicographic_soft(root, hint_vars_vals=None, seed=0,
         obj = solver.ObjectiveValue()
         bound = solver.BestObjectiveBound()
         tier_results[label] = {"status": status, "objective": obj, "best_bound": bound, "seconds": dt}
-        locked.append((tier_keys, int(round(obj))))
+        locked.append((kind, payload, int(round(obj))))
         current_hint = {}
-        for kind, var_dict in (("Start", Start), ("Teacher", Teacher), ("Room", Room)):
+        for hkind, var_dict in (("Start", Start), ("Teacher", Teacher), ("Room", Room)):
             for key, var in var_dict.items():
-                current_hint[(kind, key)] = solver.Value(var)
+                current_hint[(hkind, key)] = solver.Value(var)
         last_good = {"solver": solver, "Start": Start, "Teacher": Teacher, "Room": Room,
                      "meta": meta, "penalties": penalties, "label": label}
 
@@ -235,3 +313,59 @@ def solve_lexicographic_soft(root, hint_vars_vals=None, seed=0,
             "Teacher": last_good["Teacher"], "Room": last_good["Room"], "meta": last_good["meta"],
             "penalties": last_good["penalties"], "total_seconds": total_seconds,
             "final_tier_reached": last_good["label"]}
+
+
+def solve_incremental_resolve(root, previous_csv_path, seed=0,
+                               stability_time_limit=60.0,
+                               tier_time_limits=(40.0, 30.0, 30.0),
+                               weights=None, num_workers=8):
+    """The actual 'dynamic re-solve' entry point: given a job's root data
+    (already updated with whatever changed -- a faculty marked unavailable,
+    an offering's session count edited, etc.) and the CSV from that job's
+    PREVIOUS solve, re-solve MINIMIZING how much the schedule changes from
+    that previous solve (tier 0), then apply the same section-structure /
+    faculty / everything-else tiers as solve_lexicographic_soft on top of
+    that -- so a change that forces one session to move doesn't also quietly
+    let the optimizer reshuffle everything else "while it's in there".
+
+    Time budgets default much shorter than a cold solve_lexicographic_soft
+    call (stability_time_limit=60s, tier budgets 40/30/30s vs the cold
+    solve's 220/100/130s) -- a re-solve is meant to feel interactive, not
+    repeat the full initial solve's time cost. Tune per deployment.
+
+    Returns the same shape as solve_lexicographic_soft, plus `changed`: a
+    list of {"kind","key","old","new"} dicts -- one per Start/Teacher/Room
+    variable whose final value differs from `previous_csv_path`'s, with
+    "old"/"new" already resolved to real slot_id/faculty_id/room_id strings
+    (not raw indices) so a caller can use it directly as a diff report. This
+    is the actual "here's what cascaded" answer, computed the same way
+    _stability_expr's penalty is, just read back out of the final solution
+    rather than left as an opaque objective number.
+    """
+    # A throwaway model, built and discarded, purely to get meta's id maps
+    # (slot_to_idx/room_to_idx/fac_to_idx) so hint_from_csv can translate the
+    # previous CSV's slot_id/room_id/faculty_id strings into the same integer
+    # values the real solve's variables will use.
+    _, _, _, _, meta_for_ids = build_full_hard_model(root)
+    reference = hint_from_csv(previous_csv_path, meta_for_ids)
+
+    result = solve_lexicographic_soft(
+        root, seed=seed, tier_time_limits=tier_time_limits, weights=weights,
+        num_workers=num_workers, stability_reference=reference,
+        stability_time_limit=stability_time_limit,
+    )
+
+    solver, Start, Teacher, Room, meta = result["solver"], result["Start"], result["Teacher"], result["Room"], result["meta"]
+    idx_maps = {"Start": meta["idx_to_slot"], "Teacher": meta["idx_to_fac"], "Room": meta["idx_to_room"]}
+    changed = []
+    for kind, var_dict in (("Start", Start), ("Teacher", Teacher), ("Room", Room)):
+        for key, var in var_dict.items():
+            prev_val = reference.get((kind, key))
+            if prev_val is None:
+                continue
+            new_val = solver.Value(var)
+            if new_val != prev_val:
+                idx_map = idx_maps[kind]
+                changed.append({"kind": kind, "key": key, "old": idx_map.get(prev_val), "new": idx_map.get(new_val)})
+    result["changed"] = changed
+    return result
