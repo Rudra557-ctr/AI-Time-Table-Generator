@@ -4,31 +4,52 @@ Combines CP3 variables + CP4 collisions + availability + fixed events + workload
 Used for CP5 feasibility test.
 """
 from ortools.sat.python import cp_model
-from .preprocessing import load_all, eligible_faculty_per_course, compatible_rooms_by_course, valid_faculty_slots, valid_room_slots, blocked_assignments, contiguous_slot_sets
+from .preprocessing import load_all, eligible_faculty_per_course, compatible_rooms_by_course, valid_faculty_slots, valid_room_slots, blocked_assignments, occupied_chain_map
 from .model import build_variables
 from .hard import add_faculty_collision, add_room_collision, add_section_collision, add_student_collision, add_synchronized_constraints
 
 def add_availability_constraints(model, Start, Teacher, Room, meta):
-    """HC06 faculty availability, HC07 room availability via AllowedAssignments."""
+    """HC06 faculty availability, HC07 room availability via AllowedAssignments.
+
+    BUG FIX (found by independent post-solve validation, 2026-08-23): a
+    duration>1 session occupies `duration` consecutive clock-contiguous
+    slots starting at Start, not just the starting slot. The previous
+    version only checked availability of the starting slot, so a 2-hour lab
+    could be scheduled with a faculty/room that was available for the first
+    hour but explicitly marked unavailable for the second — a real violation
+    that CP-SAT reported as part of an "OPTIMAL" solution because the model
+    itself under-constrained it. hard.py's HC01-03 collision constraints
+    already handled multi-slot sessions correctly via a next_Start lookup;
+    this mirrors that, generalized to any duration (not hardcoded to 2) via
+    contiguous_slot_sets(..., k=duration): a start slot is only allowed if
+    EVERY slot the session would occupy is available.
+    """
     data = meta["data"]
     vfs = valid_faculty_slots(data["faculty_availability.csv"])
     vrs = valid_room_slots(data["room_availability.csv"])
-    # Map slot_id -> idx
     slot_to_idx = meta["slot_to_idx"]
-    idx_to_slot = meta["idx_to_slot"]
     fac_to_idx = meta["fac_to_idx"]
     room_to_idx = meta["room_to_idx"]
+
+    # start slot_id -> full tuple of slot_ids the session would occupy,
+    # computed once per distinct duration actually present in the dataset.
+    durations = sorted({int(o["session_duration"]) for o in meta["offerings"]})
+    occupied_chain = {d: occupied_chain_map(data["time_slots.csv"], d) for d in durations}
+
     # Faculty availability: (Teacher, Start) allowed pairs
     for o in meta["offerings"]:
         oid = o["offering_id"]
         elig = meta["eligible"][o["course_id"]]
-        # Build allowed tuples for this offering: for each eligible fac, for each valid slot for that fac
+        chain = occupied_chain[int(o["session_duration"])]
+        # Build allowed tuples for this offering: for each eligible fac, for each
+        # valid start slot where the fac is available for the WHOLE occupied chain
         allowed = []
         for fac in elig:
             f_idx = fac_to_idx[fac]
             valid_slots = vfs.get(fac, set())
             for sid in valid_slots:
-                if sid in slot_to_idx:
+                occ = chain.get(sid)
+                if occ is not None and all(s in valid_slots for s in occ):
                     allowed.append((f_idx, slot_to_idx[sid]))
         if not allowed:
             # No allowed slot for this offering -> infeasible
@@ -39,47 +60,53 @@ def add_availability_constraints(model, Start, Teacher, Room, meta):
     for o in meta["offerings"]:
         oid = o["offering_id"]
         comp_rooms = meta["compatible"].get(o["course_id"], [])
+        chain = occupied_chain[int(o["session_duration"])]
+        allowed_r = []
+        for r in comp_rooms:
+            rid = r["room_id"]
+            r_idx = room_to_idx[rid]
+            valid_slots = vrs.get(rid, set())
+            for sid in valid_slots:
+                occ = chain.get(sid)
+                if occ is not None and all(s in valid_slots for s in occ):
+                    allowed_r.append((r_idx, slot_to_idx[sid]))
         for s in range(int(o["required_sessions"])):
-            allowed_r = []
-            for r in comp_rooms:
-                rid = r["room_id"]
-                r_idx = room_to_idx[rid]
-                valid_slots = vrs.get(rid, set())
-                for sid in valid_slots:
-                    if sid in slot_to_idx:
-                        allowed_r.append((r_idx, slot_to_idx[sid]))
             if allowed_r:
                 model.AddAllowedAssignments([Room[(oid,s)], Start[(oid,s)]], allowed_r)
 
 def add_fixed_events(model, Start, meta):
-    """HC14: block fixed event slots."""
+    """HC14: block fixed event slots.
+
+    BUG FIX (found by independent post-solve validation, 2026-08-23): same
+    duration>1 gap as HC06/HC07 (see add_availability_constraints above) --
+    this only ever forbade Start itself from being a blocked slot, so a
+    duration-2 session starting one slot before a blocked event could still
+    occupy it via its second hour (e.g. a 2-hour lab starting 11:00 quietly
+    running through a 12:00-13:00 blocked faculty-meeting slot). Now forbids
+    any start slot whose full occupied chain (occupied_chain_map, any
+    duration) intersects the blocked slots, not just an exact-match start.
+    """
     blocked = blocked_assignments(meta["data"]["fixed_events.csv"], meta["data"]["time_slots.csv"])
     slot_to_idx = meta["slot_to_idx"]
+    data = meta["data"]
+    durations = sorted({int(o["session_duration"]) for o in meta["offerings"]})
+    chains_by_duration = {d: occupied_chain_map(data["time_slots.csv"], d) for d in durations}
     for fe_id, info in blocked.items():
         scope = info["scope"]
         slots = info["slots"]
-        if not slots:
+        if not slots or scope not in ("ALL", "ALL_FACULTY"):
+            # Room-specific scope not present in this dataset.
             continue
-        blocked_indices = [slot_to_idx[s] for s in slots if s in slot_to_idx]
-        if not blocked_indices:
-            continue
-        if scope == "ALL":
-            # All offerings blocked
-            for o in meta["offerings"]:
-                for s in range(int(o["required_sessions"])):
-                    # Start cannot be any blocked slot
-                    # For duration 2, also need to ensure occupied set doesn't intersect blocked
-                    # Simplified: forbid start being in blocked
-                    for b_idx in blocked_indices:
-                        model.Add(Start[(o["offering_id"], s)] != b_idx)
-        elif scope == "ALL_FACULTY":
-            # Handled via faculty availability already, but also block via Teacher condition?
-            # For simplicity, block via same as ALL for faculty-taught sessions (all)
-            for o in meta["offerings"]:
-                for s in range(int(o["required_sessions"])):
-                    for b_idx in blocked_indices:
-                        model.Add(Start[(o["offering_id"], s)] != b_idx)
-        # Room-specific etc. not present in dataset
+        for o in meta["offerings"]:
+            oid = o["offering_id"]
+            chain = chains_by_duration[int(o["session_duration"])]
+            forbidden_starts = [start_sid for start_sid, occ in chain.items() if any(sid in slots for sid in occ)]
+            forbidden_indices = [slot_to_idx[sid] for sid in forbidden_starts if sid in slot_to_idx]
+            if not forbidden_indices:
+                continue
+            for s in range(int(o["required_sessions"])):
+                for b_idx in forbidden_indices:
+                    model.Add(Start[(oid, s)] != b_idx)
 
 def add_workload_constraints(model, Start, Teacher, meta):
     """HC16: max daily/weekly hours per faculty – FIXED daily cap per R001 (efficient shared is_in_day)."""

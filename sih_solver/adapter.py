@@ -141,8 +141,16 @@ def detect_dataset_type(headers):
             best = name
     return best if best_score >=2 else None
 
-def normalize_upload_folder(upload_dir, normalized_dir):
-    """Walk upload_dir (may contain ZIP extracted or single CSV), detect each CSV's type, normalize."""
+def normalize_upload_folder(upload_dir, normalized_dir, fill_missing=False):
+    """Walk upload_dir (may contain ZIP extracted or single CSV), detect each CSV's type, normalize.
+
+    fill_missing=False (default): a missing required dataset is reported as a
+    warning and left absent from normalized_dir — callers (e.g.
+    quick_solvability_check) can then fail loudly on it. Set fill_missing=True
+    to opt into copying the bundled sample dataset's file as a stand-in
+    (demo convenience only — silently blending real and sample data is exactly
+    the kind of confident-wrong-answer bug this default protects against).
+    """
     normalized_dir.mkdir(parents=True, exist_ok=True)
     # Find all CSVs
     csvs = list(upload_dir.rglob("*.csv")) + list(upload_dir.rglob("*.CSV"))
@@ -162,16 +170,20 @@ def normalize_upload_folder(upload_dir, normalized_dir):
         out_path = normalized_dir / f"{ds_type}.csv"
         mapping = normalize_csv(csv_path, ds_type, out_path)
         report["detected"].append({"file": csv_path.name, "type": ds_type, "mapping": mapping})
-    # Ensure required datasets exist, if missing copy from base SIH as fallback
+    # Required datasets: report if missing, only fill from the bundled sample
+    # dataset when the caller explicitly opts in via fill_missing=True.
     required = ["courses","course_offerings","rooms","time_slots","sections","faculty","faculty_courses","faculty_availability","room_availability"]
     base = pathlib.Path("/tmp/sih_timetable_dataset_corrected")
     if not base.exists():
         base = pathlib.Path(__file__).resolve().parent.parent
     for req in required:
         if not (normalized_dir / f"{req}.csv").exists():
-            src = base / f"{req}.csv"
-            if src.exists():
-                import shutil
-                shutil.copy(src, normalized_dir / f"{req}.csv")
-                report["warnings"].append(f"Missing {req}.csv – filled from base SIH dataset")
+            if fill_missing:
+                src = base / f"{req}.csv"
+                if src.exists():
+                    import shutil
+                    shutil.copy(src, normalized_dir / f"{req}.csv")
+                    report["warnings"].append(f"Missing {req}.csv – filled from base SIH dataset")
+            else:
+                report["warnings"].append(f"Missing {req}.csv – required dataset not uploaded; solve will fail until it's provided (pass fill_missing=True to auto-fill demo data).")
     return report

@@ -170,6 +170,22 @@ def all_contiguous_starts(time_slots, duration):
             starts.add(tup[0])
     return starts
 
+def occupied_chain_map(time_slots, duration):
+    """start slot_id -> full tuple of slot_ids a session of this duration
+    would occupy (itself, for duration 1; the full clock-contiguous run,
+    for duration>1). Shared by any hard constraint that needs to know every
+    slot a multi-slot session actually touches, not just its start -- see
+    full_model.py's add_availability_constraints (HC06/HC07) and
+    add_fixed_events (HC14), both of which had a bug from checking only the
+    start slot before this helper existed (2026-08-23)."""
+    if duration == 1:
+        return {r["slot_id"]: (r["slot_id"],) for r in time_slots}
+    chain = {}
+    for day, groups in contiguous_slot_sets(time_slots, k=duration).items():
+        for tup in groups:
+            chain[tup[0]] = tup
+    return chain
+
 def blocked_assignments(fixed_events, time_slots):
     """Map event_id -> set of slot_ids overlapping window, with scope."""
     # Build slot windows

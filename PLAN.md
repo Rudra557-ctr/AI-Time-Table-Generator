@@ -35,6 +35,9 @@ No more hardcoded absolute paths (6 places fixed, all now resolve relative to `_
 ### A real, previously-unknown bug found by a synthetic "messy data" test — fixed
 Before finding an actual real-world contact, ran a synthetic adversarial test (renamed columns the way a real spreadsheet would be, e.g. `section_id` → "Section Code") through the live API. Found: `adapter.py`'s `normalize_csv` had a hardcoded fallback — any unmapped `section_id` column silently became the literal string `"S_CSE_1_A"` for **every row**, with no error anywhere in the pipeline. Confirmed: uploading the real 16-section dataset with just that one column renamed collapsed all 16 real sections onto one fake ID. A confident wrong answer, not a missing one — worse than a crash. **Fixed:** removed the hardcoded identity-field fallbacks from `adapter.py` (identity fields are now left blank on a failed mapping instead of fabricated); added an identity-column integrity check to `quick_solvability_check` (blank or single-value-collapsed primary keys in `courses`/`sections`/`faculty`/`rooms` → `BLOCKER`). Re-verified against a live server restart: the same broken upload now gets a `422` in milliseconds naming the exact problem, instead of a 250s+ solve on corrupted data.
 
+### A second silent-fallback bug, found by inspection — fixed
+Same family of bug as above, different location: `adapter.py:normalize_upload_folder` didn't just fabricate individual fields — if an *entire required CSV* was missing from an upload (e.g. `rooms.csv` never included), it silently copied that file in from the bundled sample dataset and buried the fact in a warning string, so a solve could run to completion on a mix of the user's real data and the repo's demo data with no error. `backend/app.py` had already worked around this at the API layer (regex-parsing that warning string to delete the filler files and re-block the solve when `?fill=true` wasn't passed), but the underlying library function itself still defaulted to silent-fill for any other caller (tests, CLI, future frontend code hitting `adapter.py` directly). **Fixed:** `normalize_upload_folder` now takes `fill_missing=False` by default — a missing required file is reported and left absent (so `quick_solvability_check` blocks the solve on it) unless the caller explicitly opts in. `backend/app.py`'s ~20-line regex-purge workaround was removed and replaced with passing `fill_missing=fill` straight through, since the library now enforces the guarantee itself. Added `tests/test_adapter.py` (2 tests, both passing) covering the default-blocks / opt-in-fills behavior.
+
 ---
 
 ## 2. What's Remaining
@@ -105,7 +108,7 @@ User ZIP/CSV/XLSX → parsers/ (zip/xlsx) → sih_solver/adapter.py (fuzzy colum
 | `sih_solver/batches.py` | Lab-batch splitting |
 | `sih_solver/adapter.py` | Fuzzy CSV/dataset-type detection for uploads |
 | `backend/app.py` | FastAPI — the entire current API surface |
-| `tests/` | 45 tests (28 fast + 17 CP-SAT-solving) |
+| `tests/` | 47 tests (30 fast + 17 CP-SAT-solving) |
 | `timetables_generated/` | Sample deliverables + `FIX_REPORT.md` |
 | `CONSTRAINTS.md` | Full HC/SC reference — source of truth for the constraint model |
 | `FINAL_PLAN.md` | Office-hours review: honest assessment, the wizard build-and-revert story, real USAR/NEP2020 problem statement findings |
@@ -127,7 +130,7 @@ User ZIP/CSV/XLSX → parsers/ (zip/xlsx) → sih_solver/adapter.py (fuzzy colum
 python3 -m pytest tests/test_preprocess.py tests/test_dataset.py tests/test_diagnose.py tests/test_variables.py -q
 
 # tests — full suite including real CP-SAT solves (~4 min)
-python3 -m pytest tests/ -q  # 45 passed
+python3 -m pytest tests/ -q  # 47 passed
 
 # hardened solve pipeline directly
 PYTHONPATH=. python3 -c "
@@ -154,3 +157,4 @@ uvicorn backend.app:app --reload --port 8000
 | 2026-08-23 | Built a 19-dataset schema + validator + JSON store + 16-step wizard frontend, then reverted it the same day. | Built to make bad data fail fast in the browser. Reversed after review found it was built without a real user, ahead of this plan's own roadmap. Two real bugs found while it was live were kept (fixed in the simpler reverted code). |
 | 2026-08-23 | Hardened solver invocation (retry seeds + hint + fallback) and added a fast pre-solve check, before any frontend or product work. | Direct answer to "will I get the best timetable with data a college hands over" was "no, not reliably" — fixed the two concrete reasons why, verified with real runs, before extending scope further. |
 | 2026-08-23 | Drafted `DESIGN.md` (Industrial/Utilitarian, navy/parchment) for the Phase B frontend, paused before building it to check backend status first. | Keeping the "verify before extending" discipline — confirm the backend story is solid and current before investing in UI on top of it. |
+| 2026-08-23 | Made `adapter.py:normalize_upload_folder`'s missing-required-file behavior explicit-opt-in (`fill_missing=False` default) instead of always silently copying bundled sample data; removed `backend/app.py`'s regex-based workaround for the same problem. | The always-fill default meant any caller other than `backend/app.py` (tests, CLI, future frontend code) got silent real-data/sample-data blending with no way to opt out — the same family of bug as the identity-field corruption fixed earlier that day, just in a different spot. Fixing it at the library source removes the need for a fragile string-matching workaround at the call site. |

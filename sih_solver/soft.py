@@ -9,6 +9,65 @@ Implements weighted-sum objective, normalized, in priority order:
   6. SC03 room wastage (lowest)
 
 Soft terms live only in Minimize(...), never in Add(...).
+
+Round 3C (PLAN.md, 2026-08-23): compared a real university timetable (USAR,
+Odd Semester 2026-27) against our generated output. That reference timetable
+is structurally compact for a reason baked into the dataset itself, not an
+optimizer trick: `time_slots.csv` has no slot for 13:00-14:00 at all, so
+period 4 (12:00) and period 5 (14:00) are never clock-contiguous
+(`preprocessing.contiguous_slot_sets`) — any section with both a morning and
+an afternoon session on the same day gets exactly one unavoidable mid-day
+hole for free, structurally, before the optimizer does anything. The real
+timetable's sections show the same pattern: on almost every section-day,
+there is at most that one mid-day hole and free periods otherwise sit at the
+start or end of the day, not scattered mid-day, and normal daily runs top
+out around 3-4 consecutive periods (see PLAN.md for the worked examples).
+That means SC02_gaps's existing formula (gaps = holes strictly between the
+first and last occupied period) was already the right shape — pushing empty
+periods outside [first, last] costs nothing, so it already prefers gaps at
+the edges over the middle. What was missing: nothing in the objective
+distinguished the single, structurally-forced mid-day hole from a second,
+fully discretionary one, so the solver had no extra reason to avoid ever
+producing 2+ gaps on a day, which is not a pattern the reference timetable
+shows. SC02_gaps_excess/SC_facgaps_excess (below) add a steeper marginal
+cost for each gap beyond the first per section/faculty per day, so a second
+avoidable gap costs meaningfully more than tolerating the first unavoidable
+one. Separately, SC05_consecutive's old 3-period window fired on completely
+normal, reference-timetable-typical runs of exactly 3 (e.g. 13:00, 14:00,
+15:00 back-to-back) — actively fighting SC02's compaction pressure on
+ordinary days, not just genuine 4-5-period marathons. Widened to a 4-period
+window so it only fires on runs the reference timetable doesn't show.
+
+Round 3C, part 2 (2026-08-23): the above fix did not move the actual
+generated schedule's gap numbers at all, even with a 450s time budget and
+159/370 rows changing — so the solver was clearly exploring, just not
+improving what mattered. Diagnosed with `diagnose_terms.py` (fix every
+variable to a real solved schedule, add the objective, solve trivially, read
+each penalty var's real value): **SC03_wastage (room wastage), the lowest
+nominal weight (1), was 68.5% of the total weighted objective** on a real
+solve, versus SC02_gaps+SC02_gaps_excess (weight 10 each, the top priority)
+at just 11.3%. Root cause: room wastage's *raw magnitude* (rooms routinely
+much bigger than enrolled headcount, summed over 370 sessions) is ~85x
+SC02's raw magnitude, which swamps SC02's 10x-higher per-unit weight. A
+weighted sum can't fix this reliably — the right rescaling factor is
+dataset-dependent (it depends on how oversized this dataset's rooms happen
+to be relative to enrollment), so a fixed weight can silently stop working
+correctly on a different dataset's room/capacity distribution.
+
+The actual fix is `solve_pipeline.solve_lexicographic_soft`: real
+hierarchical optimization — solve tier 1 (section/student-group day
+structure: SC02_gaps + SC02_gaps_excess + SC_isolated) to completion, LOCK
+its objective value as a hard upper-bound constraint, then solve tier 2
+(faculty compactness) under that lock, lock it, then tier 3 (everything
+else, including SC03_wastage) under both locks. No amount of raw-magnitude
+advantage in a lower tier can ever trade away a tier-1 unit, regardless of
+dataset scale — that guarantee is exactly what a single weighted sum cannot
+give, no matter how the weights are tuned. `add_soft_objective` still
+builds the same per-term penalty variables it always did (`penalties`
+dict); `solve_lexicographic_soft` is a different way of *combining and
+solving* them, not a different constraint model. See PENALTY_TO_WEIGHT_KEY
+below for how a `penalties` entry maps to a DEFAULT_WEIGHTS key, and
+solve_pipeline.py's TIER1/TIER2/TIER3_KEYS for the tier assignment.
 """
 from ortools.sat.python import cp_model
 from collections import defaultdict
@@ -16,6 +75,8 @@ from collections import defaultdict
 # Priority weights as per prompt: SC02 > SC01 > SC09 > SC03
 DEFAULT_WEIGHTS = {
     "SC02_gaps": 10,      # highest
+    "SC02_gaps_excess": 10,  # extra per-gap cost beyond the first per section/day (Round 3C)
+    "SC_isolated": 10,    # isolated single-period classes (Round 3C part 2) -- same tier as SC02
     "SC01_pref": 8,       # second
     "SC09_balance": 5,    # third
     "SC05_consecutive": 4,
@@ -23,7 +84,18 @@ DEFAULT_WEIGHTS = {
     "SC08_undesirable": 2,
     "SC11_building": 2,
     "SC_facgaps": 2,
+    "SC_facgaps_excess": 2,  # extra per-gap cost beyond the first per faculty/day (Round 3C)
     "SC03_wastage": 1,    # lowest
+}
+
+# penalties dict key (from add_soft_objective's return value) -> DEFAULT_WEIGHTS key.
+# Shared so any caller building a subset objective (e.g. solve_pipeline's
+# lexicographic tiers, or diagnose_terms.py) doesn't hand-roll this mapping.
+PENALTY_TO_WEIGHT_KEY = {
+    "SC02": "SC02_gaps", "SC02_excess": "SC02_gaps_excess", "SC_isolated": "SC_isolated",
+    "SC05": "SC05_consecutive", "SC06": "SC06_spread", "SC08": "SC08_undesirable",
+    "SC_facgaps": "SC_facgaps", "SC_facgaps_excess": "SC_facgaps_excess",
+    "SC11": "SC11_building", "SC01": "SC01_pref", "SC09": "SC09_balance", "SC03": "SC03_wastage",
 }
 
 def _slot_to_day_period(slot_id, time_slots):
@@ -73,8 +145,19 @@ def _build_occupied(model, Start, offerings, courses_by_id, time_slots, slot_to_
                 affecting[sec][day][period] = aff
     return occ, affecting
 
-def add_soft_objective(model, Start, Teacher, Room, meta, weights=None):
-    """Add soft penalties. Returns dict of penalty vars for reporting."""
+def add_soft_objective(model, Start, Teacher, Room, meta, weights=None, set_objective=True):
+    """Add soft penalties. Returns dict of penalty vars for reporting.
+
+    set_objective=True (default): calls model.Minimize(sum(weighted terms)),
+    same as always -- the plain single weighted-sum path used by
+    solve_hard_then_soft and the tests. set_objective=False: builds the same
+    penalty variables (every term gated by its own weights.get(key,0)==0
+    check, same as always) but does NOT call Minimize, so a caller can read
+    `penalties` and combine/solve a SUBSET of terms itself -- this is what
+    solve_pipeline.solve_lexicographic_soft uses to solve tier-by-tier
+    against the same underlying variables instead of building the model
+    fresh per tier.
+    """
     if weights is None:
         weights = DEFAULT_WEIGHTS
     data = meta["data"]
@@ -105,7 +188,14 @@ def add_soft_objective(model, Start, Teacher, Room, meta, weights=None):
                                       sections, days, day_period_to_idx)
 
     # --- SC02: Minimize student gaps per section per day ---
+    # SC02_gaps_excess (Round 3C): a second, third, ... gap on the same
+    # section/day costs an extra weights["SC02_gaps_excess"] on top of the
+    # base per-gap cost, so the solver treats "one unavoidable mid-day hole"
+    # (structurally forced by the lunch-hour gap in time_slots.csv — see
+    # module docstring) very differently from "two or more holes that day",
+    # which the reference timetable practically never shows.
     total_gap_penalty = 0
+    total_gap_excess = 0
     gap_vars = []
     for sec in sections:
         for day in days:
@@ -144,11 +234,58 @@ def add_soft_objective(model, Start, Teacher, Room, meta, weights=None):
             if weights.get("SC02_gaps",0):
                 total_gap_penalty += gaps
                 gap_vars.append(gaps)
+            if weights.get("SC02_gaps_excess",0):
+                excess = model.NewIntVar(0, 7, f"gapexcess_{sec}_{day}")
+                model.Add(excess >= gaps - 1)
+                total_gap_excess += excess
     if weights.get("SC02_gaps",0) and gap_vars:
         penalties["SC02"] = total_gap_penalty
         terms.append(weights["SC02_gaps"] * total_gap_penalty)
+    if weights.get("SC02_gaps_excess",0) and gap_vars:
+        penalties["SC02_excess"] = total_gap_excess
+        terms.append(weights["SC02_gaps_excess"] * total_gap_excess)
 
-    # --- SC05: excessive consecutive periods (window of 3+ occupied) per section/day ---
+    # --- SC_isolated: isolated single-period classes per section/day (Round 3C part 2) ---
+    # A period p is isolated if it's occupied but both neighbors are free (a
+    # day boundary counts as free). Named as its own priority tier by the
+    # user separate from SC02_gaps -- a day could in principle have a low
+    # gap-count sum while still containing a lone class stranded between two
+    # holes, so this is tracked and weighted independently, not assumed to
+    # be fully implied by SC02_gaps_excess.
+    if weights.get("SC_isolated",0):
+        isolated_terms = []
+        for sec in sections:
+            for day in days:
+                if not occ[sec][day]:
+                    continue
+                occupied = occ[sec][day]
+                for p in range(1, 8):
+                    and_terms = [occupied[p]]
+                    or_terms = [occupied[p].Not()]
+                    if p > 1:
+                        and_terms.append(occupied[p-1].Not())
+                        or_terms.append(occupied[p-1])
+                    if p < 7:
+                        and_terms.append(occupied[p+1].Not())
+                        or_terms.append(occupied[p+1])
+                    iso = model.NewBoolVar(f"iso_{sec}_{day}_{p}")
+                    model.AddBoolAnd(and_terms).OnlyEnforceIf(iso)
+                    model.AddBoolOr(or_terms).OnlyEnforceIf(iso.Not())
+                    isolated_terms.append(iso)
+        if isolated_terms:
+            total_isolated = model.NewIntVar(0, len(isolated_terms), "total_isolated")
+            model.Add(total_isolated == sum(isolated_terms))
+            penalties["SC_isolated"] = total_isolated
+            terms.append(weights["SC_isolated"] * total_isolated)
+
+    # --- SC05: excessive consecutive periods (window of 4+ occupied) per section/day ---
+    # Round 3C: was a 3-period window, which fired on ordinary compact runs of
+    # exactly 3 (common and unremarkable in the reference timetable) and
+    # actively fought SC02's compaction pressure on normal days. Widened to 4
+    # so it only penalizes runs longer than what the reference timetable
+    # treats as normal, while still discouraging true back-to-back marathons
+    # (a run of 5 spans two overlapping 4-windows, so it costs more than a
+    # run of 4 — the penalty still escalates with length, just starting later).
     if weights.get("SC05_consecutive",0):
         consec_terms = []
         for sec in sections:
@@ -156,11 +293,12 @@ def add_soft_objective(model, Start, Teacher, Room, meta, weights=None):
                 if not occ[sec][day]:
                     continue
                 occupied = occ[sec][day]
-                for p in range(2, 7):
-                    triple = model.NewBoolVar(f"triple_{sec}_{day}_{p}")
-                    model.AddBoolAnd([occupied[p-1], occupied[p], occupied[p+1]]).OnlyEnforceIf(triple)
-                    model.AddBoolOr([occupied[p-1].Not(), occupied[p].Not(), occupied[p+1].Not()]).OnlyEnforceIf(triple.Not())
-                    consec_terms.append(triple)
+                for p in range(1, 5):
+                    window = [occupied[p], occupied[p+1], occupied[p+2], occupied[p+3]]
+                    quad = model.NewBoolVar(f"quad_{sec}_{day}_{p}")
+                    model.AddBoolAnd(window).OnlyEnforceIf(quad)
+                    model.AddBoolOr([w.Not() for w in window]).OnlyEnforceIf(quad.Not())
+                    consec_terms.append(quad)
         if consec_terms:
             total_consec = model.NewIntVar(0, len(consec_terms), "total_consec")
             model.Add(total_consec == sum(consec_terms))
@@ -231,8 +369,11 @@ def add_soft_objective(model, Start, Teacher, Room, meta, weights=None):
         terms.append(weights["SC08_undesirable"] * total_und)
 
     # --- SC03b / SC_facgaps: faculty idle gaps per day ---
-    if weights.get("SC_facgaps",0):
+    # SC_facgaps_excess (Round 3C): same excess-beyond-first-gap treatment as
+    # SC02_gaps_excess, applied to faculty instead of sections.
+    if weights.get("SC_facgaps",0) or weights.get("SC_facgaps_excess",0):
         fac_gap_terms = []
+        fac_gap_excess_terms = []
         faculty_rows = {r["faculty_id"]: r for r in data["faculty.csv"]}
         # per faculty, per day: occupied periods via Teacher assignment
         fac_to_idx_map = fac_to_idx
@@ -317,11 +458,20 @@ def add_soft_objective(model, Start, Teacher, Room, meta, weights=None):
                 model.Add(gaps == tmp).OnlyEnforceIf(has_any)
                 model.Add(gaps == 0).OnlyEnforceIf(has_any.Not())
                 fac_gap_terms.append(gaps)
-        if fac_gap_terms:
+                if weights.get("SC_facgaps_excess",0):
+                    fexcess = model.NewIntVar(0, 7, f"fgapexcess_{fac_id}_{day}")
+                    model.Add(fexcess >= gaps - 1)
+                    fac_gap_excess_terms.append(fexcess)
+        if fac_gap_terms and weights.get("SC_facgaps",0):
             total_fgaps = model.NewIntVar(0, len(fac_gap_terms)*7, "total_fgaps")
             model.Add(total_fgaps == sum(fac_gap_terms))
             penalties["SC_facgaps"] = total_fgaps
             terms.append(weights["SC_facgaps"] * total_fgaps)
+        if fac_gap_excess_terms and weights.get("SC_facgaps_excess",0):
+            total_fgaps_excess = model.NewIntVar(0, len(fac_gap_excess_terms)*7, "total_fgaps_excess")
+            model.Add(total_fgaps_excess == sum(fac_gap_excess_terms))
+            penalties["SC_facgaps_excess"] = total_fgaps_excess
+            terms.append(weights["SC_facgaps_excess"] * total_fgaps_excess)
 
     # --- SC11: building movement (section has consecutive periods in different buildings) ---
     if weights.get("SC11_building",0):
@@ -488,7 +638,7 @@ def add_soft_objective(model, Start, Teacher, Room, meta, weights=None):
             penalties["SC03"] = total_waste
             terms.append(weights["SC03_wastage"] * total_waste)
 
-    if terms:
+    if set_objective and terms:
         model.Minimize(sum(terms))
     return penalties
 

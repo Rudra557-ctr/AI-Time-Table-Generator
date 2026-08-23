@@ -17,7 +17,6 @@ import uuid
 import csv
 import json
 import os
-import re
 
 BASE = pathlib.Path(__file__).resolve().parent.parent
 UPLOAD_ROOT = BASE / "uploads"
@@ -130,32 +129,11 @@ async def upload(request: Request, files: list[UploadFile] = File(...)):
 
     from sih_solver.adapter import normalize_upload_folder, CANONICAL
     normalized_dir = job_dir / "normalized"
-    report = normalize_upload_folder(raw_dir, normalized_dir)
-    if not fill:
-        # report["warnings"] may contain "Missing X.csv – filled from base SIH dataset".
-        # Purge those filler files and strip the corresponding warnings so the caller
-        # sees they're genuinely missing. Match the dataset name exactly via regex on
-        # "Missing <name>.csv" — NOT a substring search — because "faculty" is a
-        # substring of "faculty_availability" and a naive `ds in w` check here used to
-        # delete a user's real, correctly-uploaded faculty.csv instead of the filler.
-        filler_datasets = []
-        for w in list(report.get("warnings", [])):
-            if "filled from base SIH dataset" in w:
-                m = re.match(r"Missing (\w+)\.csv", w)
-                if m and m.group(1) in CANONICAL:
-                    filler_datasets.append(m.group(1))
-        for ds in filler_datasets:
-            p = normalized_dir / f"{ds}.csv"
-            try:
-                if p.exists():
-                    p.unlink()
-            except Exception:
-                pass
-        report["warnings"] = [w for w in report.get("warnings", []) if "filled from base SIH dataset" not in w]
-        if filler_datasets:
-            report["warnings"].append(
-                "Some required datasets are missing — solve will fail until they're uploaded. Use ?fill=true to auto-fill demo data."
-            )
+    # fill_missing=False (default) means normalize_upload_folder itself never
+    # silently copies bundled sample data over a missing required file — it
+    # just reports the file as missing so quick_solvability_check can block
+    # the solve on it. ?fill=true opts into the demo-convenience fallback.
+    report = normalize_upload_folder(raw_dir, normalized_dir, fill_missing=fill)
 
     audit = {ds: _count_rows(normalized_dir / f"{ds}.csv") for ds in CANONICAL.keys()}
     jobs[job_id] = {"status": "uploaded", "dir": str(job_dir), "report": report, "audit": audit}
