@@ -4,33 +4,9 @@
 **Dataset:** `SIH_Smart_Timetable_Dataset_CORRECTED.zip` (133 offerings → 370 sessions; lab-batch mode 149 → 386) — `sih_timetable_dataset_corrected/`  
 **Solver:** OR-Tools CP-SAT (`cp_model.CpModel`). **Hard** = `model.Add(...)` (must hold). **Soft** = `model.Minimize(...)` only (never `Add`).
 
-> Source of truth: `sih_solver/hard.py`, `sih_solver/full_model.py`, `sih_solver/soft.py`, `sih_solver/preprocessing.py`, `sih_solver/batches.py`, `sih_solver/dataset.py` for HC/SC (§1–§3 below); `sih_solver/schema.py`, `sih_solver/validator.py`, `backend/store.py` for the pre-solve data wizard/validation layer (§0, new). Line numbers below match current `main`.
-
----
-
-## 0. Data Wizard & Validation Layer (new, Aug 23) — runs *before* HC/SC ever see the data
-
-A separate, three-tier gate now sits in front of the CP-SAT model so bad data is rejected in the browser instead of causing a slow UNKNOWN/INFEASIBLE solve. This layer does not implement any HC/SC itself — it only decides whether the 19 CSV-shaped datasets are well-formed enough to attempt one.
-
-| Tier | Checks | Severity | Implementation |
-|------|--------|----------|-----------------|
-| **L1 — Schema** | Per-field: required/blank, type (`int64`/`bool`/`object`/`time`/`date`), `min`/`max` range, `enum` membership (unless `allow_custom`), `pattern` (e.g. `slot_id` `^[A-Z]{3}_\d{4}$`), plus per-dataset cross-field rules (`end_time>start_time`, `weekly_hours == sessions_per_week × session_duration`, `max_hours_per_day <= max_hours_per_week`, `minimum_choices <= maximum_choices`, offering `(course_id,section_id)` uniqueness, composite-pair uniqueness for `faculty_courses`/`elective_group_courses`/`student_enrollments`). | Always **BLOCKER** | `sih_solver/schema.py:298` `validate_rows` |
-| **L2 — Referential (FK)** | Every field with `"fk": "dataset.field"` in `SCHEMAS` must resolve to an existing value in the target dataset's column (built from `_fk_map()` over all 19 schemas). Caps detail issues at 20 per field + a summary "…and N more". | Always **BLOCKER** | `sih_solver/validator.py:40,80` `_fk_map`, `_l2_blockers` |
-| **L3 — Solvability** | Required datasets present & non-empty (`required_datasets()`); every course used in an offering has ≥1 row in `faculty_courses` (eligible faculty) and ≥1 compatible room (`compatible_rooms_for_course`, reuses `preprocessing.py` logic); room capacity vs `student_count`; a contiguous same-day slot pair exists if any course/offering has `session_duration==2`; `faculty_availability`/`room_availability` empty → warn (HC06/HC07 effectively disabled); OAE/PCE enrollments with no `elective_groups` → warn. | **BLOCKER** or **WARNING** per check | `sih_solver/validator.py:143` `_l3_issues` |
-
-**Downgrade rules in `validate_all`** (so the shipped synthetic dataset — which has known, solver-tolerated quirks — stays solvable): duplicate-row L1 blockers (offering dedup, composite-pair dedup) are downgraded to WARNING with "(auto-deduped on save/solve)"; "no compatible room" / "exceeds largest compatible room capacity" L3 blockers are downgraded to WARNING (handled by SC03's `>=` fallback, same as `C007` in §2). Per-tab `validate_single_dataset` does **not** apply these downgrades — it reports the strict versions so a user editing one tab still sees the real severity.
-
-**Schema coverage:** all 19 datasets from `data_dictionary.csv` — `universities, departments, programs, academic_terms, time_slots, sections, students, rooms, courses, faculty, faculty_courses, faculty_availability, room_availability, course_offerings, elective_groups, elective_group_courses, student_enrollments, fixed_events, academic_rules`. Each schema entry also declares `auto_id` (UI auto-generation format, e.g. `C{idx:03d}`) and doubles as the source for CSV template generation (`template_csv`, header + one example row, used by `GET /api/templates/{dataset}` and `/api/templates/all.zip`).
-
-**Per-job store:** `backend/store.py` persists the wizard's working copy as `uploads/{job_id}/data.json` (`{dataset: [row,...]}`), atomically written (tmp file + rename). `export_to_normalized(data, dest)` writes it out as `normalized/*.csv` in schema column order for the solver to consume; `import_from_normalized(src)` does the reverse for jobs created via the legacy upload path. This JSON store — not `normalized/*.csv` — is the source of truth for a job; `normalized/` is always derived from it before a solve.
-
-**API surface (`backend/app.py`):** `GET /api/schema[/​{dataset}]`, `GET /api/templates/{dataset}` / `/api/templates/all.zip`, `POST /api/jobs` (creates empty store), `GET /api/jobs/{id}` (rows-per-dataset counts + `validate_all` result + solve status), `GET`/`PUT /api/jobs/{id}/data/{dataset}` (PUT runs `validate_single_dataset` and rejects with HTTP 422 + the validation payload if any BLOCKER), `POST /api/jobs/{id}/import/{dataset}` (CSV/XLSX upload → `adapter.infer_column_mapping` fuzzy header match → validate → merge into the store). `POST /api/solve/{id}` now calls `validate_all` first and refuses with 422 if `total_blockers > 0` — no more silent fallback to `/tmp` or repo-root CSVs (the legacy behavior is preserved only behind `?fill=true` on `/api/upload`, an explicit demo-mode opt-in).
-
-**Frontend (`frontend/js/app.js`):** a 16-step wizard (`STEPS` array) — University → Departments → Programs → Terms → Time Slots → Rooms → Faculty → Sections → Students(+enrollments) → Courses → Assignments(faculty_courses) → Offerings → Availability(faculty+room) → Electives → Fixed Events → Advanced(academic_rules, read-only) → **Review & Solve**. `state.js` tracks the active job id and cached validation; `components.js` provides `tableEditor`/`matrixEditor` (grid-style editors, e.g. availability) and `badgeFor`/`issueList` (BLOCKER/WARNING pill rendering).
-
-**Tests:** `tests/test_schema.py` (25), `tests/test_validator.py` (14), `tests/test_data_api.py` (17) — **56 passed**, run in <1s (pure-Python + FastAPI `TestClient`, no CP-SAT solve).
-
-**Known gap:** this layer validates and stores data but the actual CP-SAT model (`sih_solver.preprocessing.load_all` → `full_model.build_full_hard_model`) still reads a plain folder of CSVs — `export_to_normalized` is the only bridge. `sih_solver/schema.py`/`validator.py` are not imported anywhere inside the solver core itself.
+> Source of truth: `sih_solver/hard.py`, `sih_solver/full_model.py`, `sih_solver/soft.py`, `sih_solver/preprocessing.py`, `sih_solver/batches.py`, `sih_solver/dataset.py`. Line numbers below match current `main`.
+>
+> **2026-08-23 note:** a 19-dataset schema + L1/L2/L3 validator + per-job JSON store + 16-step wizard frontend were built on top of this solver, then removed the same day after an `/office-hours` review found they'd been built without a real user — see `FINAL_PLAN.md` and `PLAN.md`'s Decision log. None of that layer implemented any HC/SC; nothing below is affected by its removal.
 
 ---
 
@@ -99,11 +75,7 @@ A separate, three-tier gate now sits in front of the CP-SAT model so bad data is
 
 > **Why hinted?** Soft is `536k` vars — needs hard solution as `AddHint` to find integer feasible quickly. Hard alone finds feasible; soft without hint finds LP bound but no integer solution in 150s.
 
-**Tests (solver core):** `pytest tests/test_hard_fixes.py tests/test_preprocess.py tests/test_dataset.py tests/test_hard_core.py tests/test_hard_full.py tests/test_diagnose.py tests/test_soft.py tests/test_variables.py -q` → **45 passed**, 1 skipped (was 42; added `test_hc04`, `test_hc13`, `test_lab_batch_split` in `tests/test_hard_fixes.py:7,120,148`). Hard fixes `150s` retry, preprocess `10` tests, soft `3`.
-
-**Tests (data wizard layer, new — see §0):** `pytest tests/test_schema.py tests/test_validator.py tests/test_data_api.py -q` → **56 passed** in <1s (25 schema, 14 validator, 17 data-api via FastAPI `TestClient`).
-
-**Grand total: 101 tests.**
+**Tests:** `pytest tests/ -q` → **45 passed**, 1 skipped (`test_hard_fixes.py`(7), `test_preprocess.py`(10), `test_dataset.py`(11), `test_hard_core.py`(4), `test_hard_full.py`(3), `test_diagnose.py`(2), `test_soft.py`(3), `test_variables.py`(5)). Hard fixes `150s` retry, preprocess `10` tests, soft `3`. The 4 fast files (28 tests: preprocess/dataset/diagnose/variables) were re-verified passing on 2026-08-23 after removing the wizard layer and reverting `backend/app.py`; the 4 slower CP-SAT-solving files weren't re-run in that pass but are untouched by the revert. (The separate 56-test data-wizard suite — `test_schema.py`, `test_validator.py`, `test_data_api.py` — was deleted along with the wizard layer on 2026-08-23; see `PLAN.md`'s Decision log.)
 
 **Deliverables (regenerated via `/tmp/gen_hinted2.py`):**
 - `timetables_generated/generated_timetable_fixed.csv` — 370 rows, hard **OPTIMAL**
@@ -161,17 +133,13 @@ sih_solver/soft.py:493           apply_human_feedback
 sih_solver/batches.py:17,22,48   BATCH_THRESHOLD=40, split_lab_offerings, build_lab_batch_hard_model
 sih_solver/dataset.py:11,77      EQUIPMENT_SYNONYMS audit
 sih_solver/diagnose.py           solve_with_diagnosis
-sih_solver/adapter.py:159        normalize_upload_folder, infer_column_mapping (generic upload / wizard import)
-sih_solver/schema.py             SCHEMAS (19 datasets), get_schema, validate_rows (L1), template_csv, required/optional_datasets
-sih_solver/validator.py          validate_all (L1+L2+L3), validate_single_dataset, _fk_map
+sih_solver/adapter.py:159        normalize_upload_folder, infer_column_mapping, detect_dataset_type, CANONICAL (generic upload)
 sih_solver/review.py             generate_preview (human-loop soft-scoring preview)
-sih_solver/hard_interval.py      add_collisions_via_intervals — UNFINISHED stub (body is `pass`), not wired in
-backend/app.py:37                FastAPI: legacy /api/upload, /api/solve/{job_id}, /api/status, /api/download
-                                  + wizard: /api/schema*, /api/templates/*, /api/jobs*, /api/jobs/{id}/data/{dataset}, /api/jobs/{id}/import/{dataset}
-backend/store.py                 init_store/load_store/save_store (uploads/{job_id}/data.json), export_to_normalized, import_from_normalized
-frontend/js/app.js               16-step wizard (STEPS), state.js/api.js/components.js
+backend/app.py                   FastAPI: /api/upload, /api/solve/{job_id}, /api/status, /api/download, /api/download_class
 timetables_generated/            generated_timetable_fixed.csv / soft.csv / full.csv + S_*.csv/txt + FIX_REPORT.md
 ```
+
+*(sih_solver/schema.py, sih_solver/validator.py, backend/store.py, and frontend/ — the data-wizard layer — existed 2026-08-23 and were removed the same day. See `PLAN.md`'s Decision log and `FINAL_PLAN.md`.)*
 
 ---
 
