@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# OS
+.DS_Store
+
+# Per-job runtime data (not source)
+uploads/
+
+# Editors
+untitled folder/

@@ -121,9 +121,51 @@ def add_room_collision(model, Start, Room, offerings, time_slots=None):
         elif d2==2:
             model.Add(Start[(oid1,s1)] != next_Start[(oid2,s2)]).OnlyEnforceIf(b)
 
-def add_section_collision(model, Start, offerings, time_slots=None):
-    """HC03: No section double-booking – FIXED via next handling."""
+def _next_start_map(model, Start, sessions, time_slots, tag):
+    """Build next_Start for duration-2 sessions (shared helper)."""
+    slot_to_idx, idx_to_slot, slot_next = _build_slot_maps(time_slots)
+    all_slots = [s["slot_id"] for s in time_slots]
+    next_idx_arr = [slot_to_idx[slot_next[sid]] if sid in slot_next else -1 for sid in all_slots]
+    next_Start = {}
+    for (oid, s, d) in sessions:
+        if d == 2:
+            nxt = model.NewIntVar(-1, len(all_slots)-1, f"{tag}_{oid}_{s}")
+            model.AddElement(Start[(oid, s)], next_idx_arr, nxt)
+            next_Start[(oid, s)] = nxt
+    return next_Start
+
+def _add_disjoint_pair(model, Start, next_Start, a, b):
+    """Enforce occupied sets of two sessions (a,b) disjoint."""
+    (oid1, s1, d1), (oid2, s2, d2) = a, b
+    model.Add(Start[(oid1, s1)] != Start[(oid2, s2)])
+    if d1 == 2 and d2 == 2:
+        if (oid1, s1) in next_Start and (oid2, s2) in next_Start:
+            model.Add(next_Start[(oid1, s1)] != Start[(oid2, s2)])
+            model.Add(Start[(oid1, s1)] != next_Start[(oid2, s2)])
+            model.Add(next_Start[(oid1, s1)] != next_Start[(oid2, s2)])
+    elif d1 == 2:
+        if (oid1, s1) in next_Start:
+            model.Add(next_Start[(oid1, s1)] != Start[(oid2, s2)])
+    elif d2 == 2:
+        if (oid2, s2) in next_Start:
+            model.Add(Start[(oid1, s1)] != next_Start[(oid2, s2)])
+
+def add_section_collision(model, Start, offerings, time_slots=None, sync_groups=None, alt_pairs=None):
+    """HC03: No section double-booking – FIXED via next handling.
+    Alternative offerings in the same synchronized elective group (same section)
+    are skipped (a student attends only one).
+    """
     from collections import defaultdict
+    if alt_pairs is None:
+        alt_pairs = set()
+        if sync_groups:
+            for g in sync_groups:
+                oids = sorted(g["offerings"])
+                for i in range(len(oids)):
+                    for j in range(i+1, len(oids)):
+                        alt_pairs.add((oids[i], oids[j]))
+    def is_alt(o1, o2):
+        return (o1, o2) in alt_pairs or (o2, o1) in alt_pairs
     if time_slots is None:
         sec_to_sessions = defaultdict(list)
         for o in offerings:
@@ -131,6 +173,8 @@ def add_section_collision(model, Start, offerings, time_slots=None):
                 sec_to_sessions[o["section_id"]].append((o["offering_id"], s))
         for sec, sess_list in sec_to_sessions.items():
             for (oid1,s1), (oid2,s2) in itertools.combinations(sess_list, 2):
+                if is_alt(oid1, oid2):
+                    continue
                 model.Add(Start[(oid1,s1)] != Start[(oid2,s2)])
         return
     slot_to_idx, idx_to_slot, slot_next = _build_slot_maps(time_slots)
@@ -152,6 +196,8 @@ def add_section_collision(model, Start, offerings, time_slots=None):
             sec_to_sessions[o["section_id"]].append((o["offering_id"], s, d))
     for sec, sess_list in sec_to_sessions.items():
         for (oid1,s1,d1), (oid2,s2,d2) in itertools.combinations(sess_list, 2):
+            if is_alt(oid1, oid2):
+                continue
             model.Add(Start[(oid1,s1)] != Start[(oid2,s2)])
             if d1==2 and d2==2:
                 model.Add(next_Start[(oid1,s1)] != Start[(oid2,s2)])
@@ -161,3 +207,91 @@ def add_section_collision(model, Start, offerings, time_slots=None):
                 model.Add(next_Start[(oid1,s1)] != Start[(oid2,s2)])
             elif d2==2:
                 model.Add(Start[(oid1,s1)] != next_Start[(oid2,s2)])
+
+
+def _req(offerings, oid):
+    for o in offerings:
+        if o["offering_id"] == oid:
+            return o["required_sessions"]
+    return 0
+
+def _dur(offerings, oid):
+    for o in offerings:
+        if o["offering_id"] == oid:
+            return o["session_duration"]
+    return "1"
+
+def add_student_collision(model, Start, offerings, time_slots, student_enrollments, students):
+    """HC04: No student double-booking for OAE/PCE electives.
+    Enforces that a student's elective offering(s) do not collide with their
+    own section's CORE offerings or with a second elective offering.
+    Same-section pairs are already handled by HC03, so we only add constraints
+    for cross-section electives + elective-vs-core per student.
+    """
+    from collections import defaultdict
+    if not student_enrollments or not students:
+        return
+    stu_sec = {s["student_id"]: s["section_id"] for s in students}
+    oid_sec = {o["offering_id"]: o["section_id"] for o in offerings}
+    oid_by_course = defaultdict(list)
+    for o in offerings:
+        oid_by_course[o["course_id"]].append(o["offering_id"])
+    sec_offerings = defaultdict(list)
+    for o in offerings:
+        sec_offerings[o["section_id"]].append(o["offering_id"])
+    all_sessions = [(o["offering_id"], s, int(o["session_duration"]))
+                    for o in offerings for s in range(int(o["required_sessions"]))]
+    next_Start = _next_start_map(model, Start, all_sessions, time_slots, "nextStu")
+    for e in student_enrollments:
+        if e["enrollment_type"] not in ("OAE", "PCE"):
+            continue
+        stu = e["student_id"]
+        sec = stu_sec.get(stu)
+        if not sec:
+            continue
+        cands = oid_by_course.get(e["course_id"], [])
+        if not cands:
+            continue
+        elect_oids = [oid for oid in cands if oid_sec.get(oid) == sec] or cands
+        core_oids = [oid for oid in sec_offerings.get(sec, []) if oid not in elect_oids]
+        for eoid in elect_oids:
+            if oid_sec.get(eoid) != sec:
+                for coid in core_oids:
+                    for s1 in range(int(_req(offerings, eoid))):
+                        for s2 in range(int(_req(offerings, coid))):
+                            _add_disjoint_pair(
+                                model, Start, next_Start,
+                                (eoid, s1, int(_dur(offerings, eoid))),
+                                (coid, s2, int(_dur(offerings, coid))))
+        for a_i in range(len(elect_oids)):
+            for b_i in range(a_i + 1, len(elect_oids)):
+                a, b = elect_oids[a_i], elect_oids[b_i]
+                if a == b:
+                    continue
+                for s1 in range(int(_req(offerings, a))):
+                    for s2 in range(int(_req(offerings, b))):
+                        _add_disjoint_pair(
+                            model, Start, next_Start,
+                            (a, s1, int(_dur(offerings, a))),
+                            (b, s2, int(_dur(offerings, b))))
+
+def add_synchronized_constraints(model, Start, offerings, time_slots, sync_groups):
+    """HC13: Synchronized electives must share the same slot per session idx.
+    Each group contains offerings of the SAME course across sections (a shared
+    cross-section elective class) -> all must run at the same slot.
+    """
+    from collections import defaultdict
+    if not sync_groups:
+        return
+    for group in sync_groups:
+        oids = sorted(group["offerings"])
+        if len(oids) < 2:
+            continue
+        by_req = defaultdict(list)
+        for oid in oids:
+            by_req[int(_req(offerings, oid))].append(oid)
+        for req, req_members in by_req.items():
+            base = req_members[0]
+            for oid in req_members[1:]:
+                for s in range(req):
+                    model.Add(Start[(base, s)] == Start[(oid, s)])

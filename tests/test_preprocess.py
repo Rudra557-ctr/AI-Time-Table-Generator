@@ -71,9 +71,13 @@ def test_blocked_assignments_lunch_and_meeting():
 
 def test_synchronized_groups_6():
     groups = synchronized_offering_groups(data["elective_groups.csv"], data["elective_group_courses.csv"], data["course_offerings_deduped"])
-    assert len(groups) == 6
+    # One group per synchronized (elective_group, course): same course across
+    # sections is a shared cross-section elective class -> must share a slot.
+    assert len(groups) == 13
     for g in groups:
         assert len(g["offerings"]) >= 2
+        # All offerings in a group are the SAME course (cross-section sync)
+        assert "course_id" in g
 
 def test_student_elective_offerings():
     seo = student_elective_offerings(data["student_enrollments.csv"], data["course_offerings_deduped"])

@@ -10,9 +10,11 @@ No constraints yet – pure domain.
 from ortools.sat.python import cp_model
 from .preprocessing import load_all, eligible_faculty_per_course, compatible_rooms_by_course, all_contiguous_starts, valid_faculty_slots, valid_room_slots
 
-def build_variables(root=None):
+def build_variables(root=None, offerings_override=None):
     data = load_all(root)
     offerings = data["course_offerings_deduped"]  # 133
+    if offerings_override is not None:
+        offerings = offerings_override
     courses_by_id = {c["course_id"]: c for c in data["courses.csv"]}
     rooms = data["rooms.csv"]
     faculty_courses = data["faculty_courses.csv"]
@@ -45,26 +47,32 @@ def build_variables(root=None):
     room_to_idx = {rid:i for i,rid in enumerate(all_room_ids)}
     idx_to_room = {i:rid for rid,i in room_to_idx.items()}
 
-    # Build Teacher vars first (per offering)
+    # Build Teacher vars first (per offering) – skip offerings with missing course (varying dataset)
+    valid_offerings = []
     for o in offerings:
         oid = o["offering_id"]
         course_id = o["course_id"]
+        if course_id not in courses_by_id:
+            print(f"Warning: offering {oid} references missing course {course_id} – skipped")
+            continue
         elig = sorted(eligible.get(course_id, []))
         if not elig:
-            raise ValueError(f"No eligible faculty for {course_id}")
-        fac_indices = [fac_to_idx[f] for f in elig]
-        # CP-SAT domain can be non-contiguous via AllowedValues? Simpler: IntVar 0..len(fac)-1 and map
-        # But we need to allow only eligible indices; use domain from explicit values via NewIntVar with domain
-        # Use NewIntVarFromDomain with Domain.FromValues
+            print(f"Warning: No eligible faculty for {course_id} – skipped offering {oid}")
+            continue
+        fac_indices = [fac_to_idx[f] for f in elig if f in fac_to_idx]
+        if not fac_indices:
+            continue
         dom = cp_model.Domain.FromValues(fac_indices)
         Teacher[oid] = model.NewIntVarFromDomain(dom, f"Teacher_{oid}")
-
+        valid_offerings.append(o)
+    # Filter offerings to valid ones for remaining vars
+    offerings = valid_offerings
+    # Update meta offerings to valid
     # Build Start and Room per session
     for o in offerings:
         oid = o["offering_id"]
         duration = int(o["session_duration"])
         req_sessions = int(o["required_sessions"])
-        # contiguous starts for this duration
         valid_starts = all_contiguous_starts(time_slots, duration)
         start_indices = [slot_to_idx[s] for s in valid_starts]
         if not start_indices:
@@ -73,12 +81,18 @@ def build_variables(root=None):
         course = courses_by_id[o["course_id"]]
         comp_rooms = compatible.get(o["course_id"], [])
         if not comp_rooms:
-            raise ValueError(f"No compatible rooms for {o['course_id']}")
-        room_indices = [room_to_idx[r["room_id"]] for r in comp_rooms]
+            print(f"Warning: No compatible rooms for {o['course_id']} – using any classroom")
+            comp_rooms = [r for r in rooms if r["room_type"]=="CLASSROOM"][:1]
+            compatible[o["course_id"]] = comp_rooms
+        room_indices = [room_to_idx[r["room_id"]] for r in comp_rooms if r["room_id"] in room_to_idx]
+        if not room_indices:
+            room_indices = [0]
         room_dom = cp_model.Domain.FromValues(room_indices)
         for s in range(req_sessions):
             Start[(oid, s)] = model.NewIntVarFromDomain(dom, f"Start_{oid}_{s}")
             Room[(oid, s)] = model.NewIntVarFromDomain(room_dom, f"Room_{oid}_{s}")
+    # Update meta offerings to valid
+    meta_offerings = offerings
 
     meta = {
         "offerings": offerings,

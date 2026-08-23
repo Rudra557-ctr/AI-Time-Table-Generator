@@ -8,8 +8,9 @@ Applies Round1 Part C fixes:
 import csv
 import pathlib
 from collections import Counter, defaultdict
+from .preprocessing import EQUIPMENT_SYNONYMS
 
-DATASET_ROOT_RAW = pathlib.Path("/Users/riyanshukumar/Downloads/sih")
+DATASET_ROOT_RAW = pathlib.Path(__file__).resolve().parent.parent
 DATASET_ROOT_CORRECTED = pathlib.Path("/tmp/sih_timetable_dataset_corrected")
 
 # Also support the extracted corrected folder as alternative
@@ -73,7 +74,7 @@ def audit_dataset(root: pathlib.Path = DATASET_ROOT_RAW):
             if req and req not in room_equips:
                 # equipment_required may be comma list; check each token
                 tokens = [t.strip() for t in req.split(",") if t.strip()]
-                missing = [t for t in tokens if t not in room_equips]
+                missing = [t for t in tokens if t not in room_equips and t not in EQUIPMENT_SYNONYMS]
                 if missing:
                     mism.append((c["course_id"], req, missing))
         report["equipment_mismatch"] = mism

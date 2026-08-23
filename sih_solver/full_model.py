@@ -6,7 +6,7 @@ Used for CP5 feasibility test.
 from ortools.sat.python import cp_model
 from .preprocessing import load_all, eligible_faculty_per_course, compatible_rooms_by_course, valid_faculty_slots, valid_room_slots, blocked_assignments, contiguous_slot_sets
 from .model import build_variables
-from .hard import add_faculty_collision, add_room_collision, add_section_collision
+from .hard import add_faculty_collision, add_room_collision, add_section_collision, add_student_collision, add_synchronized_constraints
 
 def add_availability_constraints(model, Start, Teacher, Room, meta):
     """HC06 faculty availability, HC07 room availability via AllowedAssignments."""
@@ -83,6 +83,8 @@ def add_fixed_events(model, Start, meta):
 
 def add_workload_constraints(model, Start, Teacher, meta):
     """HC16: max daily/weekly hours per faculty – FIXED daily cap per R001 (efficient shared is_in_day)."""
+    if not meta.get("slot_to_idx"):
+        return
     day_order = {"MON":0,"TUE":1,"WED":2,"THU":3,"FRI":4}
     day_names = ["MON","TUE","WED","THU","FRI"]
     max_slot_idx = max(meta["slot_to_idx"].values())
@@ -187,11 +189,24 @@ def build_full_hard_model(root=None, limit_offerings=None):
         offs = meta["offerings"][:limit_offerings]
         pass
     # Add core collisions – FIXED to handle duration 2 via occupied sets
+    from .preprocessing import synchronized_offering_groups, elective_alternative_pairs
+    sync_groups = synchronized_offering_groups(meta["data"]["elective_groups.csv"],
+                                               meta["data"]["elective_group_courses.csv"],
+                                               meta["offerings"])
+    alt_pairs = elective_alternative_pairs(meta["data"]["elective_groups.csv"],
+                                           meta["data"]["elective_group_courses.csv"],
+                                           meta["offerings"],
+                                           meta["data"]["student_enrollments.csv"])
     add_faculty_collision(model, Start, Teacher, meta["offerings"], meta["data"]["time_slots.csv"])
     add_room_collision(model, Start, Room, meta["offerings"], meta["data"]["time_slots.csv"])
-    add_section_collision(model, Start, meta["offerings"], meta["data"]["time_slots.csv"])
+    add_section_collision(model, Start, meta["offerings"], meta["data"]["time_slots.csv"], sync_groups, alt_pairs)
     # HC12 no repeat same course same day
     add_no_repeat_same_course_same_day(model, Start, meta)
+    # HC04 student-level elective collision
+    add_student_collision(model, Start, meta["offerings"], meta["data"]["time_slots.csv"],
+                          meta["data"]["student_enrollments.csv"], meta["data"]["students.csv"])
+    # HC13 synchronized electives
+    add_synchronized_constraints(model, Start, meta["offerings"], meta["data"]["time_slots.csv"], sync_groups)
     # Add availability and fixed
     add_availability_constraints(model, Start, Teacher, Room, meta)
     add_fixed_events(model, Start, meta)

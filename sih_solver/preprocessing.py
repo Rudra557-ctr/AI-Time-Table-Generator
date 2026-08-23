@@ -7,14 +7,38 @@ import pathlib
 from collections import defaultdict
 from datetime import datetime
 
-DATASET_ROOT = pathlib.Path("/Users/riyanshukumar/Downloads/sih")
+DATASET_ROOT = pathlib.Path(__file__).resolve().parent.parent
 CORRECTED_ROOT = pathlib.Path("/tmp/sih_timetable_dataset_corrected")
+
+# HC10 equipment synonym map: course equipment requirement -> acceptable room
+# equipment tokens (interim policy CC09). Keeps matching feasible when the
+# course vocabulary is broader than the room vocabulary (e.g. DATABASE_SYSTEMS
+# labs run on COMPUTERS rooms).
+EQUIPMENT_SYNONYMS = {
+    "DATABASE_SYSTEMS": "COMPUTERS",
+    "DATABASE": "COMPUTERS",
+    "DBMS_SOFTWARE": "COMPUTERS",
+    "GPUS": "COMPUTERS",
+    "GPU": "COMPUTERS",
+    "PROGRAMMING_IDE": "COMPUTERS",
+    "SOFTWARE_DEV": "COMPUTERS",
+    "AUDIO": "AUDIO_SYSTEM",
+    "PROJECTOR_SCREEN": "PROJECTOR",
+    "MICROCONTROLLER": "MICROCONTROLLERS",
+    "OSCILLOSCOPE": "OSCILLOSCOPES",
+    "ROBOT_KIT": "ROBOT_KITS",
+    "3D_PRINTERS": "3D_PRINTER",
+    "DRAWING_BOARD": "DRAWING_BOARDS",
+    "PHYSICS_EQUIPMENT_SET": "PHYSICS_EQUIPMENT",
+}
 
 def _read(path):
     with open(path, newline='', encoding='utf-8') as f:
         return list(csv.DictReader(f))
 
 def load_all(root=None):
+    if root is not None:
+        root = pathlib.Path(root)
     if root is None:
         # Prefer corrected dataset where lab capacities are 70 (feasible) over raw 40
         if CORRECTED_ROOT.exists() and (CORRECTED_ROOT / "course_offerings.csv").exists():
@@ -72,6 +96,8 @@ def compatible_rooms_for_course(course, rooms, offerings_for_course=None):
     req_tokens = [t.strip() for t in equip_req.split(",") if t.strip()]
     if not req_tokens:
         return candidates
+    # apply synonym map to course requirements (HC10 vocab matching)
+    req_tokens = [EQUIPMENT_SYNONYMS.get(t, t) for t in req_tokens]
     # check each room equipment
     filtered=[]
     for r in candidates:
@@ -186,6 +212,10 @@ def student_elective_offerings(student_enrollments, course_offerings_deduped):
     return dict(per_student)
 
 def synchronized_offering_groups(elective_groups, elective_group_courses, offerings_deduped):
+    """Synchronized elective offerings, grouped per (group_id, course_id).
+    Offerings of the SAME course across sections represent one shared elective
+    class (cross-section students attend together) -> same time slot.
+    """
     groups=[]
     course_to_group={}
     for r in elective_group_courses:
@@ -196,12 +226,58 @@ def synchronized_offering_groups(elective_groups, elective_group_courses, offeri
     for eg in elective_groups:
         if eg["synchronized"].lower()=="true":
             courses=course_to_group.get(eg["elective_group_id"], set())
-            oids=[]
             for c in courses:
-                oids.extend(offering_by_course.get(c, []))
-            if oids:
-                groups.append({"group_id":eg["elective_group_id"],"offerings":set(oids)})
+                oids = offering_by_course.get(c, [])
+                if len(oids) >= 2:
+                    groups.append({"group_id":eg["elective_group_id"],"course_id":c,"offerings":set(oids)})
     return groups
+
+def elective_alternative_pairs(elective_groups, elective_group_courses, offerings_deduped,
+                               student_enrollments=None):
+    """Set of (oid1, oid2) offering pairs that are ALTERNATIVES for the same
+    student: same elective group AND same section (student picks exactly one).
+    Used by HC03 to skip requiring these to be non-overlapping.
+    A pair is only treated as an alternative if NO student is actually enrolled
+    in both courses (a course may belong to several groups, so e.g. C060 in
+    EG01/EG02 and C065 in EG06 are both taken by the same student).
+    """
+    pairs = set()
+    course_to_group={}
+    for r in elective_group_courses:
+        course_to_group.setdefault(r["elective_group_id"], set()).add(r["course_id"])
+    offering_by_course=defaultdict(list)
+    for o in offerings_deduped:
+        offering_by_course[o["course_id"]].append(o)
+    oid_to_course = {o["offering_id"]: o["course_id"] for o in offerings_deduped}
+    # students who take both of a course pair -> that pair is NOT an alternative
+    both_taken = set()
+    if student_enrollments:
+        stu_courses = defaultdict(set)
+        for e in student_enrollments:
+            stu_courses[e["student_id"]].add(e["course_id"])
+        for courses in stu_courses.values():
+            cl = sorted(courses)
+            for i in range(len(cl)):
+                for j in range(i+1, len(cl)):
+                    both_taken.add((cl[i], cl[j]))
+    for eg in elective_groups:
+        if eg["synchronized"].lower()!="true":
+            continue
+        courses = course_to_group.get(eg["elective_group_id"], set())
+        # offerings of all courses in this group, grouped by section
+        by_sec = defaultdict(list)
+        for c in courses:
+            for o in offering_by_course.get(c, []):
+                by_sec[o["section_id"]].append(o["offering_id"])
+        for sec, oids in by_sec.items():
+            oids = sorted(set(oids))
+            for i in range(len(oids)):
+                for j in range(i+1, len(oids)):
+                    ca, cb = oid_to_course.get(oids[i]), oid_to_course.get(oids[j])
+                    if ca and cb and ((ca, cb) in both_taken or (cb, ca) in both_taken):
+                        continue
+                    pairs.add((oids[i], oids[j]))
+    return pairs
 
 if __name__=="__main__":
     data=load_all()
