@@ -90,12 +90,23 @@ def normalize_csv(input_path, canonical_name, output_path):
                 if user_col and user_col in r and r[user_col].strip() != "":
                     out_row[canon] = r[user_col].strip()
                 else:
-                    # Auto-generate offering_id if missing
+                    # offering_id is the one field genuinely safe to auto-generate:
+                    # it's a synthetic primary key this system owns (institutions
+                    # don't have pre-existing "offering IDs"), and AUTO{idx} is
+                    # unique per row and unmistakably synthetic-looking.
                     if canon == "offering_id" and canonical_name == "course_offerings":
                         out_row[canon] = f"AUTO{idx+1:04d}"
-                    elif canon == "course_id" and canonical_name == "courses" and not r.get(user_col or "", "").strip():
-                        out_row[canon] = f"C{idx+1:03d}"
                     else:
+                        # NOTE: identity/FK fields (course_id, section_id, faculty_id,
+                        # room_id, ...) are deliberately NOT auto-generated here, unlike
+                        # an earlier version of this function. That version hardcoded
+                        # "section_id": "S_CSE_1_A" as a fallback — meaning any upload
+                        # whose section column didn't map got ALL rows silently
+                        # collapsed onto that one literal string, with no error anywhere
+                        # in the pipeline. A confident wrong answer is worse than a
+                        # missing one: leave identity fields blank on a failed mapping so
+                        # sih_solver.dataset.quick_solvability_check's blank/duplicate-ID
+                        # checks can catch it loudly instead.
                         defaults = {
                             "required_sessions": "1",
                             "session_duration": "1",
@@ -107,9 +118,6 @@ def normalize_csv(input_path, canonical_name, output_path):
                             "available": "True",
                             "preference_score": "3",
                             "preferred": "False",
-                            "offering_id": f"AUTO{idx+1:04d}",
-                            "section_id": "S_CSE_1_A",
-                            "course_id": f"C{idx+1:03d}",
                         }
                         out_row[canon] = defaults.get(canon, "")
             w.writerow(out_row)

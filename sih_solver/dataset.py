@@ -134,6 +134,33 @@ def quick_solvability_check(normalized_dir: pathlib.Path):
         # missing-file blockers rather than cascading into confusing KeyErrors.
         return {"blockers": blockers, "warnings": warnings}
 
+    # Identity-column integrity: a primary-key column that's blank or collapsed
+    # onto one repeated value is a strong signal of a failed import-column
+    # mapping (adapter.py's fuzzy header matching couldn't place a real-world
+    # column name), not valid data. Caught a real bug this way: an older
+    # version of adapter.py silently defaulted every unmapped section_id to
+    # the literal "S_CSE_1_A" — a confident WRONG answer with no error
+    # anywhere in the pipeline, worse than the file just being empty. Scoped
+    # to each dataset's OWN primary key only (courses.course_id, not
+    # course_offerings.course_id, which legitimately repeats as a normal FK).
+    for fname, id_field in [("courses.csv", "course_id"), ("sections.csv", "section_id"),
+                             ("faculty.csv", "faculty_id"), ("rooms.csv", "room_id")]:
+        rows = data[fname]
+        ids = [str(r.get(id_field, "")).strip() for r in rows]
+        blank_count = sum(1 for v in ids if not v)
+        if blank_count:
+            blockers.append(f"{fname}: {blank_count} of {len(rows)} rows have a blank '{id_field}' — "
+                             f"likely a column that didn't import correctly, not real data.")
+            continue
+        distinct = len(set(ids))
+        if len(ids) > 1 and distinct == 1:
+            blockers.append(f"{fname}: all {len(rows)} rows have the identical '{id_field}' value "
+                             f"'{ids[0]}' — almost certainly a failed column import, not {len(rows)} "
+                             f"real records that happen to share one ID.")
+        elif len(ids) > 3 and distinct < len(ids) * 0.5:
+            blockers.append(f"{fname}: only {distinct} distinct '{id_field}' values across {len(ids)} "
+                             f"rows — check that this column mapped to the right source column.")
+
     courses = data["courses.csv"]
     rooms = data["rooms.csv"]
     faculty_courses = data["faculty_courses.csv"]
