@@ -136,8 +136,19 @@ def test_hc13_synchronized_same_slot():
     # Solve just this (plus base availability) and verify slot equality
     from sih_solver.full_model import add_availability_constraints
     add_availability_constraints(model, Start, Teacher, Room, meta)
-    solver = cp_model.CpSolver(); solver.parameters.max_time_in_seconds = 90; solver.parameters.num_search_workers = 8
+    # PLAN.md §5.A3: bumped 90s->150s + seed-1 retry, matching test_lab_batch_split
+    # and test_hc04 above — A1's real verification runs showed even the full hard
+    # model can need a seed retry to avoid a flaky UNKNOWN, not just tight timing.
+    solver = cp_model.CpSolver(); solver.parameters.max_time_in_seconds = 150; solver.parameters.num_search_workers = 8
     st = solver.Solve(model)
+    if st not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+        model2, Start, Teacher, Room, meta = build_variables()
+        groups2 = synchronized_offering_groups(data["elective_groups.csv"], data["elective_group_courses.csv"], meta["offerings"])
+        add_synchronized_constraints(model2, Start, meta["offerings"], data["time_slots.csv"], groups2)
+        add_availability_constraints(model2, Start, Teacher, Room, meta)
+        solver = cp_model.CpSolver(); solver.parameters.max_time_in_seconds = 150; solver.parameters.num_search_workers = 8; solver.parameters.random_seed = 1
+        st = solver.Solve(model2)
+        groups = groups2
     assert st in (cp_model.OPTIMAL, cp_model.FEASIBLE), solver.StatusName(st)
     idx_to_slot = meta["idx_to_slot"]
     off = {o["offering_id"]: o for o in meta["offerings"]}

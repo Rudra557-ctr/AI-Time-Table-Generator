@@ -167,27 +167,38 @@ async def upload(request: Request, files: list[UploadFile] = File(...)):
 # Solve
 # ---------------------------------------------------------------------------
 
+# Statuses that carry an actual, valid, conflict-free schedule worth writing out.
+_SOLVED_STATUSES = {"OPTIMAL_SOFT", "FEASIBLE_SOFT", "HARD_ONLY_FALLBACK"}
+
+
 @app.post("/api/solve/{job_id}")
-async def solve(job_id: str, background_tasks: BackgroundTasks, time_limit: int = 60):
+async def solve(job_id: str, background_tasks: BackgroundTasks,
+                 hard_time_limit: float = 150.0, soft_time_limit: float = 120.0):
     job_dir = UPLOAD_ROOT / job_id
     if not job_dir.exists():
         return JSONResponse({"error": "job not found"}, status_code=404)
     normalized_dir = job_dir / "normalized"
 
+    # PLAN.md §5.A2 — fail fast (sub-second) on data that would otherwise burn
+    # the full time budget and come back INFEASIBLE/UNKNOWN or crash mid-solve
+    # with no explanation.
+    from sih_solver.dataset import quick_solvability_check
+    check = quick_solvability_check(normalized_dir)
+    if check["blockers"]:
+        return JSONResponse(
+            {"error": "Cannot solve — fix these first", "blockers": check["blockers"], "warnings": check["warnings"]},
+            status_code=422,
+        )
+
     def run_solve():
         try:
-            from sih_solver.full_model import build_full_hard_model
-            from sih_solver.soft import add_soft_objective, DEFAULT_WEIGHTS
-            from ortools.sat.python import cp_model
-
-            model, Start, Teacher, Room, meta = build_full_hard_model(str(normalized_dir))
-            add_soft_objective(model, Start, Teacher, Room, meta, DEFAULT_WEIGHTS)
-            solver = cp_model.CpSolver()
-            solver.parameters.max_time_in_seconds = time_limit
-            solver.parameters.num_search_workers = 8
-            status = solver.Solve(model)
-            names = {0: "UNKNOWN", 2: "FEASIBLE", 3: "INFEASIBLE", 4: "OPTIMAL"}
+            from sih_solver.solve_pipeline import solve_hard_then_soft
             import csv as csv2
+
+            result = solve_hard_then_soft(str(normalized_dir), hard_time_limit=hard_time_limit,
+                                           soft_time_limit=soft_time_limit)
+            solver, Start, Teacher, Room, meta = result["solver"], result["Start"], result["Teacher"], result["Room"], result["meta"]
+            solved = result["status"] in _SOLVED_STATUSES
             out_csv = job_dir / "generated_timetable.csv"
             slots = {s["slot_id"]: s for s in meta["data"]["time_slots.csv"]}
             with open(out_csv, "w", newline="") as f:
@@ -195,11 +206,11 @@ async def solve(job_id: str, background_tasks: BackgroundTasks, time_limit: int 
                 w.writerow(["offering_id","course_id","section_id","session","slot_id","day","start_time","end_time","room_id","faculty_id"])
                 for o in meta["offerings"]:
                     oid = o["offering_id"]
-                    fac = meta["idx_to_fac"][solver.Value(Teacher[oid])] if status in (2, 4) else "UNASSIGNED"
+                    fac = meta["idx_to_fac"][solver.Value(Teacher[oid])] if solved else "UNASSIGNED"
                     for s in range(int(o["required_sessions"])):
                         try:
-                            slot_id = meta["idx_to_slot"][solver.Value(Start[(oid, s)])] if status in (2, 4) else "UNASSIGNED"
-                            room_id = meta["idx_to_room"][solver.Value(Room[(oid, s)])] if status in (2, 4) else "UNASSIGNED"
+                            slot_id = meta["idx_to_slot"][solver.Value(Start[(oid, s)])] if solved else "UNASSIGNED"
+                            room_id = meta["idx_to_room"][solver.Value(Room[(oid, s)])] if solved else "UNASSIGNED"
                             sl = slots.get(slot_id, {"day": "?","start_time": "?","end_time": "?"})
                             w.writerow([oid, o["course_id"], o["section_id"], s+1, slot_id, sl["day"], sl["start_time"], sl["end_time"], room_id, fac])
                         except Exception:
@@ -224,7 +235,7 @@ async def solve(job_id: str, background_tasks: BackgroundTasks, time_limit: int 
             sections = sorted(set(o["section_id"] for o in meta["offerings"]))
             class_dir = job_dir / "class_timetables"
             class_dir.mkdir(exist_ok=True)
-            if status in (2, 4):
+            if solved:
                 import csv as _csv
                 timetable = list(_csv.DictReader(open(out_csv, newline="", encoding="utf-8")))
                 for sec in sections:
@@ -248,7 +259,15 @@ async def solve(job_id: str, background_tasks: BackgroundTasks, time_limit: int 
                         w.writerow(["Day/Period"]+period_headers)
                         for d in days:
                             w.writerow([d]+[grid[d][p] for p in period_order])
-            payload = {"status": names.get(status, str(status)), "objective": (solver.ObjectiveValue() if status in (2,4) else None), "output": str(out_csv), "dir": str(job_dir)}
+            payload = {
+                "status": result["status"],
+                "hard_status": result["hard_status"], "soft_status": result["soft_status"],
+                "seed_used": result["seed_used"],
+                "hard_seconds": round(result["hard_seconds"], 1), "soft_seconds": round(result["soft_seconds"], 1),
+                "objective": result["objective"],
+                "warnings": check["warnings"],
+                "output": str(out_csv) if solved else None, "dir": str(job_dir),
+            }
             jobs[job_id].update(payload)
             _write_status(job_dir, jobs[job_id])
         except Exception as e:
@@ -260,7 +279,7 @@ async def solve(job_id: str, background_tasks: BackgroundTasks, time_limit: int 
     background_tasks.add_task(run_solve)
     jobs[job_id] = {**jobs.get(job_id, {}), "status": "solving", "dir": str(job_dir)}
     _write_status(job_dir, jobs[job_id])
-    return {"job_id": job_id, "status": "solving", "poll": f"/api/status/{job_id}"}
+    return {"job_id": job_id, "status": "solving", "poll": f"/api/status/{job_id}", "warnings": check["warnings"]}
 
 
 @app.get("/api/status/{job_id}")

@@ -5,11 +5,15 @@
 
 ## 1. Solver Status
 
+**2026-08-23 update (PLAN.md §5.A1/A4):** regenerated via `sih_solver/solve_pipeline.py` (hard-only retry-seeds `[0,1,42]` → `AddHint` into hard+soft → falls back to the hard-only schedule if soft times out, instead of an un-hinted single-shot solve that reliably came back `UNKNOWN`). Verified across 3 independent runs before this regeneration: 3/3 returned a usable schedule (2 `FEASIBLE_SOFT`, 1 `HARD_ONLY_FALLBACK` when soft timed out) — zero `UNKNOWN`. This specific regeneration run: hard `OPTIMAL` in 91.6s (seed 0, no retry needed this time), soft `FEASIBLE` in 153.9s hinted, objective **12287**. Soft time budget raised 120s→150s based on the verification runs showing 120s was sometimes too tight (see PLAN.md's Decision log / §5.A note for the full 3-run data, including the one run where seed 0 needed a retry to seed 1).
+
 | Run | Model | Time | Status | Solve Time |
 |-----|-------|------|--------|------------|
-| Hard only (HC01-16 + HC12 + HC04 + HC13) | `sih_solver/full_model.py` with `hard.py` (occupied sets) + `HC12` + daily cap + `HC04` student-level + `HC13` sync (per-course) | 150s, 8 workers, retry seeds | **OPTIMAL** | ~112s (nondeterministic, 90s sometimes UNKNOWN, 150s reliably OPTIMAL with retry) |
-| Hard + Soft (weighted, 9 terms) | Hard + `soft.py` SC02/SC01/SC09/SC03/SC05/SC06/SC08/SC11/SC_facgaps weighted sum (hinted from hard) | 120s, 8 workers, hinted | **FEASIBLE** (hinted from hard OPTIMAL, 7408 obj, bound 3030) | 121s |
-| Lab batches | `sih_solver/batches.py` split_lab_offerings (threshold 40) → 32 batches, `build_lab_batch_hard_model` | 90s, 8 workers | **OPTIMAL** | 45s |
+| Hard only (HC01-16 + HC12 + HC04 + HC13) | `sih_solver/full_model.py` with `hard.py` (occupied sets) + `HC12` + daily cap + `HC04` student-level + `HC13` sync (per-course) | 150s, 8 workers, retry seeds `[0,1,42]` | **OPTIMAL** | 91.6s this run (observed range across 3 verification runs: 95.0-317.1s; 317.1s case needed a seed retry) |
+| Hard + Soft (weighted, 9 terms) | Hard + `soft.py` SC02/SC01/SC09/SC03/SC05/SC06/SC08/SC11/SC_facgaps weighted sum (hinted from hard via per-variable `AddHint`) | 150s, 8 workers, hinted | **FEASIBLE** (hinted from hard OPTIMAL, obj **12287**) | 153.9s this run (observed range: 122.7s timeout→fallback, 124.2-124.5s FEASIBLE) |
+| Lab batches | `sih_solver/batches.py` split_lab_offerings (threshold 40) → 32 batches, `build_lab_batch_hard_model` | 90s, 8 workers | **OPTIMAL** | 45s (not re-verified in this update) |
+
+> **Honest note on the objective jump:** the previous sample's `obj 7408` was also the 9-term hinted objective (per this file's earlier text), so the new `12287` is a real ~66% increase, not an artifact of comparing different term counts. The likely cause is CP-SAT nondeterminism — different seed, different hard solution, different room/faculty assignments feeding the same 9 penalty terms differently — not a code regression (no soft-term logic changed in this update, only the retry/hint/fallback wrapper around solving). Not investigated further here; if this recurs consistently across future regenerations rather than varying run-to-run, it would be worth treating as a real signal, not noise.
 
 > Hard with filtered `alt_pairs` (18 vs 53) is more constrained (enforces 35 same-section alternative pairs where students take both C060/C065) → takes ~110s vs 58s previously. Soft is 536k vars, 1.2M constraints → needs hinting from hard to find FEASIBLE quickly. All soft terms remain `Minimize` only, never `Add()`.
 

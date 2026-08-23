@@ -93,6 +93,86 @@ def audit_dataset(root: pathlib.Path = DATASET_ROOT_RAW):
         pass
     return report
 
+def quick_solvability_check(normalized_dir: pathlib.Path):
+    """PLAN.md §5.A2 — fast pre-solve check against a job's normalized/ folder.
+
+    Catches the specific ways `model.py`/`full_model.py` fail today, so a bad
+    upload gets a clear answer in well under a second instead of silently
+    burning the full solve time budget:
+
+      - a course with zero eligible faculty doesn't raise anything in
+        model.py — the offering is just silently dropped from the schedule
+        (`build_variables` prints a warning and `continue`s). That's worse
+        than a crash: the solver reports OPTIMAL/FEASIBLE while quietly
+        omitting part of what was asked for. BLOCKER.
+      - a course with no compatible room falls back to an arbitrary
+        CLASSROOM regardless of type/equipment/capacity fit. Not a crash,
+        but likely a wrong-looking result. WARNING.
+      - a course/offering needing `session_duration==2` with no contiguous
+        same-day slot pair in time_slots.csv raises a bare ValueError deep
+        in `build_variables`, killing the whole background solve. BLOCKER.
+
+    Returns {"blockers": [str, ...], "warnings": [str, ...]}.
+    """
+    from .preprocessing import (
+        eligible_faculty_per_course, compatible_rooms_by_course, all_contiguous_starts,
+    )
+    normalized_dir = pathlib.Path(normalized_dir)
+    blockers, warnings = [], []
+
+    required_files = ["courses.csv", "rooms.csv", "faculty.csv", "faculty_courses.csv",
+                       "course_offerings.csv", "sections.csv", "time_slots.csv"]
+    data = {}
+    for fname in required_files:
+        p = normalized_dir / fname
+        rows = _read_csv(p) if p.exists() else []
+        if not rows:
+            blockers.append(f"Required file '{fname}' is missing or empty — cannot solve without it.")
+        data[fname] = rows
+    if blockers:
+        # Every later check assumes these files exist; bail out with just the
+        # missing-file blockers rather than cascading into confusing KeyErrors.
+        return {"blockers": blockers, "warnings": warnings}
+
+    courses = data["courses.csv"]
+    rooms = data["rooms.csv"]
+    faculty_courses = data["faculty_courses.csv"]
+    time_slots = data["time_slots.csv"]
+
+    seen = set()
+    offerings_deduped = []
+    for r in data["course_offerings.csv"]:
+        k = (r["course_id"], r["section_id"])
+        if k in seen:
+            continue
+        seen.add(k)
+        offerings_deduped.append(r)
+
+    used_course_ids = {o["course_id"] for o in offerings_deduped}
+    courses_by_id = {c["course_id"]: c for c in courses}
+    eligible = eligible_faculty_per_course(faculty_courses)
+    compatible = compatible_rooms_by_course(courses, rooms, offerings_deduped)
+
+    for cid in sorted(used_course_ids):
+        if cid not in courses_by_id:
+            blockers.append(f"Offering references course '{cid}' which isn't in courses.csv.")
+            continue
+        if not eligible.get(cid):
+            blockers.append(f"Course '{cid}' has no eligible faculty in faculty_courses.csv — "
+                             f"that offering would be silently dropped from the schedule.")
+        if not compatible.get(cid):
+            warnings.append(f"Course '{cid}' has no room matching its required_room_type/equipment — "
+                             f"will fall back to an arbitrary classroom.")
+
+    needs_double = any(int(o.get("session_duration", 1) or 1) == 2 for o in offerings_deduped) or \
+        any(int(c.get("session_duration", 1) or 1) == 2 for c in courses)
+    if needs_double and not all_contiguous_starts(time_slots, 2):
+        blockers.append("At least one course/offering needs a 2-slot session but time_slots.csv has "
+                         "no contiguous same-day slot pair — this will crash the solve, not just fail it.")
+
+    return {"blockers": blockers, "warnings": warnings}
+
+
 def get_dataset_roots():
     """Prefer corrected if exists else raw."""
     # Offer both for testing

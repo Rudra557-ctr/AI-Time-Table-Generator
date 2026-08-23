@@ -125,18 +125,45 @@ User ZIP/CSV → parsers/ (csv/xlsx/zip) → sih_solver/adapter.py (normalize_up
 
 ## 5. Next Steps — Plan
 
-### A. Immediate (stabilize & document) — no new constraints
+### A. Make solving actually reliable — DONE (2026-08-23), verified with real runs
 
-1. **Harden solver invocation** — wrap `build_full_hard_model` + `add_soft_objective` in `solve_with_retry` helper (seeds `[0,1,42]`, `150s` hard, `120s` soft hinted) and use it in `backend/app.py:68` `run_solve` and `cli.py`. Currently `app.py:106` does single `60s` solve with no retry/hint → will be UNKNOWN for filtered hard.
-2. **Make `_build_occupied` conditional** — currently built unconditionally even when only `SC01/SC03` needed; guard with `if any(weights.get(k) for k in ["SC02","SC05","SC06","SC11"])`.
-3. **Update `tests/test_hard_fixes.py:159`** — already bumped to `150s` retry for `HC04`; apply same to `test_lab_batch_split:115` and `test_hc13:134` (lab done, HC13 still 90s). Ensure CI uses `PYTHONPATH` and `/tmp/...` zip extracted.
-4. **Regenerate & lock** — re-run `/tmp/gen_hinted2.py` and commit `FIX_REPORT.md` + `generated_timetable_*.csv` (soft is hinted FEASIBLE; consider committing both fixed and soft).
+This section exists because of a direct question asked 2026-08-23: *"will I get the best timetable with data a college hands over?"* The honest answer at the time was **no, not reliably** — for two concrete, fixable reasons. Both are now fixed and verified against the real dataset, not just reviewed by reading the code.
 
-### B. Short-term (product polish)
+**A1. Harden solver invocation — never return nothing if a valid schedule exists. DONE.**
+- Implemented in `sih_solver/solve_pipeline.py:solve_hard_then_soft()`, used by `backend/app.py:run_solve` (not yet wired into `cli.py` — out of scope for now, `cli.py` is a dev-loop tool, not the production path):
+  1. Solve **hard-only** first, trying seeds `[0, 1, 42]` in order (each gets its own full `150s`), stopping at the first `OPTIMAL`/`FEASIBLE`.
+  2. `INFEASIBLE` on any seed stops immediately (proven no valid schedule exists — no point retrying or attempting soft).
+  3. On hard-only success, hints its variable assignments into the combined hard+soft model (one `model.AddHint(var, val)` call per variable — this OR-Tools version's binding takes a single var/value pair, not batched lists; a batched-list attempt threw `TypeError` inside OR-Tools' own `add_hint()`, caught during verification, fixed by reading the library source), then solves soft with its own `150s` budget (bumped from an initially-planned `120s` — see acceptance data below for why).
+  4. If soft times out without an integer solution, **falls back to the hard-only schedule** (`HARD_ONLY_FALLBACK` status) instead of returning nothing.
+  5. `/api/solve` now takes `hard_time_limit`/`soft_time_limit` query params (defaults `150.0`/`150.0`), replacing the old single `time_limit: int = 60`.
+- **Acceptance test result (3 real runs against the actual repo dataset, 133 offerings):**
 
-5. **Backend robustness** — `backend/app.py:63` `time_limit` param is `int` (default 60) but hard needs 120-150; change default to `120`, add `hint` path (solve hard first, then soft with `AddHint`), and return `objective`/`penalties` in `/api/status`. Handle `C007` warning cleanly.
-6. **Frontend** — `frontend/index.html` currently polls `/api/status`; add display of `audit` (equipment mismatches, compatible rooms) and `penalties` breakdown, plus per-section grid preview (reuse `S_*.csv` logic).
-7. **Adapter** — `adapter.py:159` already auto-generates `offering_id`; add validation for `course_offerings.csv` dedup and `student_count` vs `room capacity` warnings (as in `dataset.py:audit_dataset`).
+  | Run | Hard | Soft | Final status | Total wall time |
+  |---|---|---|---|---|
+  | 1 | OPTIMAL @ 95.5s (seed 0) | timed out (UNKNOWN) @ 122.7s | `HARD_ONLY_FALLBACK` | 225.6s |
+  | 2 | OPTIMAL @ 317.1s (seed 0 failed → seed 1 succeeded) | FEASIBLE @ 124.2s, obj 12261 | `FEASIBLE_SOFT` | 449.4s |
+  | 3 | OPTIMAL @ 95.0s (seed 0) | FEASIBLE @ 124.5s, obj 12403 | `FEASIBLE_SOFT` | 226.8s |
+
+  **3/3 runs returned a usable, conflict-free schedule. Zero `UNKNOWN`.** Both failure-recovery paths fired for real during these runs (run 2 needed the seed retry; run 1 needed the hard-only fallback), not just in theory. Run 1's 120s soft timeout is why the soft budget was raised to 150s afterward.
+
+**A2. Lightweight solvability pre-check — the gap created by removing the wizard. DONE.**
+- Implemented as `sih_solver/dataset.py:quick_solvability_check(normalized_dir)` — checks required files present/non-empty, every used course has ≥1 eligible faculty (**BLOCKER** — otherwise `model.py` silently drops the offering with only a stdout print, the worst kind of silent failure) and ≥1 compatible room (**WARNING** — falls back to an arbitrary classroom, not a crash), and a contiguous slot pair exists if any course/offering needs `session_duration==2` (**BLOCKER** — otherwise a bare `ValueError` crashes the whole background solve).
+- Wired into `/api/solve` as a synchronous check before the background task starts; returns `422` with the blocker list immediately if any are found.
+- **Acceptance test result:** removed all `faculty_courses` rows for one course, called the live `/api/solve` endpoint — **18ms**, `HTTP 422`, exact message: `"Course 'C001' has no eligible faculty in faculty_courses.csv — that offering would be silently dropped from the schedule."` Clean data on the same job: 0 blockers, 1 warning (correctly identifies the pre-existing, previously-documented `C007` no-compatible-room case).
+
+**A3. Test time limits updated. DONE.** — `test_hc13_synchronized_same_slot` bumped `90s`→`150s` + seed-1 retry, matching `test_hc04`/`test_lab_batch_split` which already had this pattern.
+
+**A4. Deliverables regenerated. DONE.** — `timetables_generated/generated_timetable_fixed.csv` (hard-only), `_soft.csv`/`_full.csv` (hinted, `FEASIBLE`, obj **12287**), and all 16 `S_*.csv`/`.txt` section grids regenerated via `solve_pipeline.py` (hard `OPTIMAL` 91.6s, soft `FEASIBLE` 153.9s). `FIX_REPORT.md`'s solver-status table updated with these numbers and an honest note that the objective (12287 vs. the old 7408 sample) isn't directly comparable run-to-run under CP-SAT's nondeterministic search — flagged as "watch for a pattern," not dismissed.
+
+### A+. Verify before extending — the discipline that got skipped last time
+
+A1-A4 are done and verified. Phase B, C, D below — and Phase 2 of `FINAL_PLAN.md` (finding a real USAR/NEP-2020 contact) — can now proceed. The wizard got built because this discipline was skipped once already: effort went into new surface area before the existing surface area was proven reliable. Keep applying it going forward — verify a change against the real dataset before calling it done, the way A1/A2 were.
+
+### B. Short-term (product polish) — only after A+ is verified
+
+5. ~~Backend robustness: hint path, realistic time_limit~~ — **now covered by A1/A2 above**, not a separate later item.
+6. **Frontend** — none exists right now (removed with the wizard). Rebuild a minimal one: upload, poll `/api/status`, display `objective`/penalties breakdown and A2's solvability blockers if any, per-section grid preview (reuse `S_*.csv` logic). Deliberately not the 16-step wizard — see `PLAN.md`'s Decision log for why.
+7. ~~Adapter validation as in dataset.py:audit_dataset~~ — **now covered by A2 above.**
 8. **Observability** — log solver `ResponseProto` (num_conflicts, branches) to `jobs[job_id]/solver.log` for debugging UNKNOWN vs FEASIBLE.
 
 ### C. Medium-term (solver performance)
