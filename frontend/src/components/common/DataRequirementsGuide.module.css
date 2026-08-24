@@ -1,0 +1,47 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.tier {
+  padding-bottom: 4px;
+}
+
+.tierTitle {
+  font-size: 13px;
+  margin-bottom: 3px;
+}
+
+.tierDesc {
+  font-size: 12px;
+  color: var(--ink-muted);
+  margin-bottom: 10px;
+}
+
+.fileList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.fileRow {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card-muted);
+}
+
+.fileHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12.5px;
+}
+
+.fileImpact {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--ink-muted);
+}

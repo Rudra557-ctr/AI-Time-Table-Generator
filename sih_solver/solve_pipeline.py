@@ -476,14 +476,20 @@ def solve_deep_optimize(root, previous_csv_path, seed=0,
          showed the worst offenders get fixed in the first ~15-20 rounds --
          rounds 20-39 were almost entirely diminishing-returns retries that
          mostly failed (score already near-optimal per section by then).
-         Each round also carries a measured ~3.1s of CP-SAT model-rebuild
-         overhead (build_full_hard_model has no cheaper "reuse but re-pin"
-         path -- OR-Tools CpModel constraints can't be removed once added,
-         so LNS can't reuse one model object across rounds) -- with 40
-         rounds that overhead alone was ~126 of the original ~180s. At
+         Each round used to pay a measured ~1.3-3.1s CP-SAT model-rebuild
+         cost via a fresh build_full_hard_model call -- with 40 rounds that
+         overhead alone was ~126s of the original ~180s. Fixed by building
+         the hard model ONCE and, per round, cloning its already-built
+         proto (_clone_model, a ~0.05s protobuf-level copy) instead of
+         re-running the Python-side builder -- OR-Tools CpModel constraints
+         can't be REMOVED once added, but a fresh clone sidesteps that
+         entirely since each round gets its own independent copy to pin
+         constraints onto, not a mutated shared model. Variable wrapper
+         objects (Start/Teacher/Room) from the original build stay valid
+         against any clone since OR-Tools only needs their index. At
          max_rounds=20 the SAME real dataset still cut internal gaps ~79%
-         (101->21ish) in roughly half the time; verify per-run, don't
-         assume the exact percentage holds on every dataset.
+         (101->21ish); verify per-run, don't assume the exact percentage
+         holds on every dataset.
       2. solve_lexicographic_soft with skip_tier1=True, warm-started
          directly from phase 1's final assignment -- faculty-compactness
          (tier2), then preferences/workload/room-use/spread (tier3), same
@@ -665,6 +671,21 @@ def _section_gap_objective(model, Start, meta, target_section):
     return gaps_expr, isolated_expr
 
 
+def _clone_model(base_model):
+    """Cheap protobuf-level copy of an already-built hard model, so LNS's
+    per-round pin-and-resolve doesn't pay build_full_hard_model's ~1.3-3s
+    Python-side rebuild (looping every course/offering emitting collision
+    constraints) on every one of up to max_rounds rounds. Variable wrapper
+    objects (Start/Teacher/Room) created against base_model stay valid for
+    adding new constraints/hints on the clone -- OR-Tools only needs the
+    var's index, not live model identity -- verified empirically: the
+    cloned model solves correctly and base_model is left untouched.
+    """
+    new_model = cp_model.CpModel()
+    new_model.Proto().copy_from(base_model.Proto())
+    return new_model
+
+
 def lns_gap_repair(root, base_csv_path, weights=None,
                     max_rounds=40, time_limits=(5.0, 15.0, 30.0),
                     num_workers=8):
@@ -716,7 +737,7 @@ def lns_gap_repair(root, base_csv_path, weights=None,
     improvement that didn't happen.
     """
     weights = weights or DEFAULT_WEIGHTS
-    _, _, _, _, meta_for_ids = build_full_hard_model(root)
+    base_model, base_Start, base_Teacher, base_Room, meta_for_ids = build_full_hard_model(root)
     hint = hint_from_csv(base_csv_path, meta_for_ids)
     offering_section = _offering_section_map(meta_for_ids)
 
@@ -748,7 +769,8 @@ def lns_gap_repair(root, base_csv_path, weights=None,
         before_score = dict(ranking)[target]
         time_limit = time_limits[target_idx]
 
-        model, Start, Teacher, Room, meta = build_full_hard_model(root)
+        model = _clone_model(base_model)
+        Start, Teacher, Room, meta = base_Start, base_Teacher, base_Room, meta_for_ids
         for (kind, key), val in hint.items():
             var_dict = {"Start": Start, "Teacher": Teacher, "Room": Room}[kind]
             var = var_dict.get(key)

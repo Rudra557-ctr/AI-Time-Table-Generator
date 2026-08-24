@@ -76,3 +76,18 @@
 .warningsBlock {
   margin-top: 16px;
 }
+
+.guideDetails {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.guideSummary {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+  user-select: none;
+  margin-bottom: 14px;
+}

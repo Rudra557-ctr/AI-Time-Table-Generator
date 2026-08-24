@@ -5,6 +5,7 @@ import { Card } from '../components/common/Card'
 import { Button } from '../components/common/Button'
 import { Banner } from '../components/common/Banner'
 import { DataTable } from '../components/common/DataTable'
+import { DataRequirementsGuide } from '../components/common/DataRequirementsGuide'
 import { Icon } from '../components/common/Icon'
 import { uploadFiles } from '../api/endpoints'
 import { ApiError } from '../api/client'
@@ -106,10 +107,22 @@ export function UploadPage() {
         </Button>
       </Card>
 
+      {!uploadResult && (
+        <details className={styles.guideDetails}>
+          <summary className={styles.guideSummary}>What data should I provide for an optimal timetable?</summary>
+          <DataRequirementsGuide />
+        </details>
+      )}
+
       {uploadResult && (
         <>
-          <h3 className={styles.sectionTitle}>Ingestion audit — rows detected per dataset</h3>
+          <h3 className={styles.sectionTitle}>What you should add for an optimal timetable</h3>
           <Card>
+            <DataRequirementsGuide audit={uploadResult.audit} />
+          </Card>
+
+          <details className={styles.guideDetails}>
+            <summary className={styles.guideSummary}>Raw ingestion audit (rows detected per dataset)</summary>
             <DataTable
               columns={['dataset', 'rows']}
               rows={Object.entries(uploadResult.audit).map(([dataset, rows]) => ({
@@ -117,7 +130,7 @@ export function UploadPage() {
                 rows: String(rows),
               }))}
             />
-          </Card>
+          </details>
 
           {warnings.length > 0 && (
             <div className={styles.warningsBlock}>

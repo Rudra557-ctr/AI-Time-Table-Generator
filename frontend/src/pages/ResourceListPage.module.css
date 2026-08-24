@@ -1,0 +1,11 @@
+.search {
+  width: 100%;
+  max-width: 320px;
+  padding: 9px 12px;
+  margin-bottom: 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-card);
+  color: var(--ink);
+  font-size: 13px;
+}

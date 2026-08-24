@@ -10,7 +10,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className={styles.shell}>
       <Sidebar />
       <div className={styles.mainCol}>
-        <header className={styles.topbar}>
+        <header className={`${styles.topbar} no-print`}>
           <span className={`${styles.jobBadge} mono`}>
             {jobId ? `job ${jobId}` : 'no dataset loaded'}
           </span>

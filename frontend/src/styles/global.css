@@ -72,3 +72,36 @@ button {
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+.print-only {
+  display: none;
+}
+
+@media print {
+  :root {
+    --bg: #ffffff;
+    --bg-card: #ffffff;
+    --bg-card-muted: #ffffff;
+    --border: #999999;
+    --border-strong: #666666;
+    --ink: #000000;
+    --ink-muted: #333333;
+    --ink-faint: #555555;
+  }
+
+  @page {
+    margin: 14mm;
+  }
+
+  body {
+    background: #fff;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block;
+  }
+}

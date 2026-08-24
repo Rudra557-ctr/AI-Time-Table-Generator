@@ -76,6 +76,9 @@
 }
 
 .downloadRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   margin-top: 14px;
   padding-top: 14px;
   border-top: 1px solid var(--border);
@@ -168,4 +171,63 @@
 .betterCell {
   color: var(--ok);
   font-weight: 700;
+}
+
+.printHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  border-bottom: 2px solid #000;
+  padding-bottom: 10px;
+  margin-bottom: 18px;
+}
+
+.printBrand {
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.printMeta {
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+
+.printSection {
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.printSection + .printSection {
+  page-break-before: always;
+  break-before: page;
+}
+
+.printSectionTitle {
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.printGrid {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10.5px;
+  margin-bottom: 10px;
+}
+
+.printGrid th,
+.printGrid td {
+  border: 1px solid #999;
+  padding: 6px 5px;
+  text-align: center;
+}
+
+.printGrid th {
+  background: #f2f2f2;
+  font-size: 9.5px;
+  text-transform: uppercase;
+}
+
+.printDayCell {
+  font-weight: 700;
+  width: 46px;
 }

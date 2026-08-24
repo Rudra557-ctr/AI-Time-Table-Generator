@@ -6,9 +6,24 @@ import { Card } from '../components/common/Card'
 import { StatCard } from '../components/common/StatCard'
 import { Button } from '../components/common/Button'
 import { EmptyState } from '../components/common/EmptyState'
+import { BarChart, type BarChartBar } from '../components/common/BarChart'
 import { getReport } from '../api/endpoints'
-import type { ReportResponse } from '../api/types'
+import type { GapSegmentSummary, ReportResponse } from '../api/types'
 import styles from './AnalyticsPage.module.css'
+
+function dayTypeBars(s: GapSegmentSummary): BarChartBar[] {
+  return [
+    { label: 'Zero-gap days', value: s.zero_gap_days, tone: 'ok' },
+    { label: 'One-gap days', value: s.one_gap_days, tone: 'accent' },
+    { label: '2+ gap days', value: s.multi_gap_days, tone: 'warn' },
+  ]
+}
+
+function runLengthBars(s: GapSegmentSummary): BarChartBar[] {
+  return Object.entries(s.run_length_histogram)
+    .sort(([a], [b]) => Number(a) - Number(b))
+    .map(([length, count]) => ({ label: length, value: count, tone: 'accent' }))
+}
 
 export function AnalyticsPage() {
   const { jobId, hasSolved } = useJob()
@@ -71,6 +86,38 @@ export function AnalyticsPage() {
             />
             <StatCard label="Isolated single-period runs" value={report.sections.total_isolated_runs} />
           </div>
+          <div className={styles.chartGrid}>
+            <Card>
+              <h4 className={styles.chartTitle}>Section-day breakdown</h4>
+              <p className={styles.chartSubtitle}>How many section-days have zero, one, or 2+ internal gaps.</p>
+              <BarChart bars={dayTypeBars(report.sections)} />
+            </Card>
+            <Card>
+              <h4 className={styles.chartTitle}>Consecutive-class run lengths</h4>
+              <p className={styles.chartSubtitle}>How many back-to-back periods sections typically run, per day.</p>
+              <BarChart bars={runLengthBars(report.sections)} />
+              <details className={styles.tableToggle}>
+                <summary>View as table</summary>
+                <table className={styles.dataTable}>
+                  <thead>
+                    <tr>
+                      <th>Run length (periods)</th>
+                      <th>Occurrences</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {runLengthBars(report.sections).map((b) => (
+                      <tr key={b.label}>
+                        <td>{b.label}</td>
+                        <td className="mono">{b.value}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </details>
+            </Card>
+          </div>
+
           <h3 className={styles.sectionTitle}>Faculty</h3>
           <div className={styles.statGrid}>
             <StatCard label="Faculty-days" value={report.faculty.entity_days} />
@@ -81,6 +128,37 @@ export function AnalyticsPage() {
               tone={report.faculty.multi_gap_day_pct > 20 ? 'warn' : 'ok'}
             />
             <StatCard label="Mean working days" value={report.faculty.mean_working_days.toFixed(1)} />
+          </div>
+          <div className={styles.chartGrid}>
+            <Card>
+              <h4 className={styles.chartTitle}>Faculty-day breakdown</h4>
+              <p className={styles.chartSubtitle}>How many faculty-days have zero, one, or 2+ internal gaps.</p>
+              <BarChart bars={dayTypeBars(report.faculty)} />
+            </Card>
+            <Card>
+              <h4 className={styles.chartTitle}>Consecutive-class run lengths</h4>
+              <p className={styles.chartSubtitle}>How many back-to-back periods faculty typically teach, per day.</p>
+              <BarChart bars={runLengthBars(report.faculty)} />
+              <details className={styles.tableToggle}>
+                <summary>View as table</summary>
+                <table className={styles.dataTable}>
+                  <thead>
+                    <tr>
+                      <th>Run length (periods)</th>
+                      <th>Occurrences</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {runLengthBars(report.faculty).map((b) => (
+                      <tr key={b.label}>
+                        <td>{b.label}</td>
+                        <td className="mono">{b.value}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </details>
+            </Card>
           </div>
         </>
       )}

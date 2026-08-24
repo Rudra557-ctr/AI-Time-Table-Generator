@@ -15,6 +15,7 @@ export type IconName =
   | 'moon'
   | 'arrowRight'
   | 'download'
+  | 'print'
 
 const common = {
   width: 18,
@@ -142,6 +143,14 @@ export function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
         <svg {...props}>
           <path d="M12 4v12M12 16l-4-4M12 16l4-4" />
           <path d="M4 18v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+        </svg>
+      )
+    case 'print':
+      return (
+        <svg {...props}>
+          <path d="M6 9V3h12v6" />
+          <rect x="4" y="9" width="16" height="8" rx="1.5" />
+          <path d="M6 14h12v7H6z" />
         </svg>
       )
   }

@@ -8,6 +8,7 @@ import { EmptyState } from '../components/common/EmptyState'
 import { DataTable } from '../components/common/DataTable'
 import { getDatasetRows } from '../api/endpoints'
 import type { IconName } from '../components/common/Icon'
+import styles from './ResourceListPage.module.css'
 
 const ICONS: Record<string, IconName> = { sections: 'users', faculty: 'cap', rooms: 'door', courses: 'book' }
 
@@ -18,11 +19,13 @@ export function ResourceListPage({ dataset, title }: { dataset: string; title: s
   const [columns, setColumns] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     if (!jobId) return
     setLoading(true)
     setError(null)
+    setSearch('')
     getDatasetRows(jobId, dataset)
       .then((res) => {
         setRows(res.rows)
@@ -31,6 +34,11 @@ export function ResourceListPage({ dataset, title }: { dataset: string; title: s
       .catch(() => setError(`${dataset}.csv wasn't found in this upload.`))
       .finally(() => setLoading(false))
   }, [jobId, dataset])
+
+  const query = search.trim().toLowerCase()
+  const filteredRows = query
+    ? (rows ?? []).filter((row) => Object.values(row).some((v) => v.toLowerCase().includes(query)))
+    : rows
 
   if (!jobId) {
     return (
@@ -63,7 +71,19 @@ export function ResourceListPage({ dataset, title }: { dataset: string; title: s
             description="This file wasn't part of the last upload for this job."
           />
         )}
-        {rows && rows.length > 0 && <DataTable columns={columns} rows={rows} />}
+        {rows && rows.length > 0 && (
+          <input
+            className={styles.search}
+            type="text"
+            placeholder={`Search ${dataset}…`}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        )}
+        {filteredRows && filteredRows.length > 0 && <DataTable columns={columns} rows={filteredRows} />}
+        {rows && rows.length > 0 && filteredRows && filteredRows.length === 0 && (
+          <EmptyState icon={ICONS[dataset] ?? 'grid'} title="No matches" description={`No rows match "${search}".`} />
+        )}
         {rows && rows.length === 0 && (
           <EmptyState icon={ICONS[dataset] ?? 'grid'} title="Empty" description={`${dataset}.csv has no rows.`} />
         )}

@@ -21,3 +21,60 @@
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+.chartGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+@media (max-width: 1000px) {
+  .chartGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.chartTitle {
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.chartSubtitle {
+  font-size: 11.5px;
+  color: var(--ink-muted);
+  margin-bottom: 14px;
+}
+
+.tableToggle {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.tableToggle summary {
+  font-size: 11.5px;
+  color: var(--accent);
+  cursor: pointer;
+  user-select: none;
+}
+
+.dataTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-top: 10px;
+}
+
+.dataTable th,
+.dataTable td {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  color: var(--ink-muted);
+}
+
+.dataTable td:last-child,
+.dataTable th:last-child {
+  text-align: right;
+}

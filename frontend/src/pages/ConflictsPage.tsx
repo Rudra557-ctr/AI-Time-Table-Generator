@@ -7,7 +7,9 @@ import { Button } from '../components/common/Button'
 import { Banner } from '../components/common/Banner'
 import { EmptyState } from '../components/common/EmptyState'
 import { getPrecheck } from '../api/endpoints'
+import { suggestFix } from '../utils/conflictSuggestions'
 import type { PrecheckResponse } from '../api/types'
+import styles from './ConflictsPage.module.css'
 
 export function ConflictsPage() {
   const { jobId } = useJob()
@@ -57,18 +59,30 @@ export function ConflictsPage() {
             ) : (
               <Banner tone="error" title={`${precheck.blockers.length} blocker(s) — solving will fail until these are fixed`}>
                 <ul>
-                  {precheck.blockers.map((b, i) => (
-                    <li key={i}>{b}</li>
-                  ))}
+                  {precheck.blockers.map((b, i) => {
+                    const fix = suggestFix(b)
+                    return (
+                      <li key={i}>
+                        {b}
+                        {fix && <div className={styles.fix}>Suggested fix: {fix}</div>}
+                      </li>
+                    )
+                  })}
                 </ul>
               </Banner>
             )}
             {precheck.warnings.length > 0 && (
               <Banner tone="warn" title={`${precheck.warnings.length} warning(s) — non-blocking`}>
                 <ul>
-                  {precheck.warnings.map((w, i) => (
-                    <li key={i}>{w}</li>
-                  ))}
+                  {precheck.warnings.map((w, i) => {
+                    const fix = suggestFix(w)
+                    return (
+                      <li key={i}>
+                        {w}
+                        {fix && <div className={styles.fix}>Suggested fix: {fix}</div>}
+                      </li>
+                    )
+                  })}
                 </ul>
               </Banner>
             )}

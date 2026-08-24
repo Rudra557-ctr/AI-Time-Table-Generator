@@ -11,6 +11,7 @@ const NAV_ITEMS: { to: string; label: string; icon: IconName }[] = [
   { to: '/faculty', label: 'Faculty', icon: 'cap' },
   { to: '/rooms', label: 'Rooms', icon: 'door' },
   { to: '/courses', label: 'Courses', icon: 'book' },
+  { to: '/electives', label: 'Electives', icon: 'users' },
   { to: '/conflicts', label: 'Conflicts', icon: 'alert' },
 ]
 
@@ -21,7 +22,7 @@ const NAV_ITEMS_LOWER: { to: string; label: string; icon: IconName }[] = [
 
 export function Sidebar() {
   return (
-    <aside className={styles.sidebar}>
+    <aside className={`${styles.sidebar} no-print`}>
       <div className={styles.brand}>
         <span className={styles.brandMark}>
           <Icon name="grid" size={16} />

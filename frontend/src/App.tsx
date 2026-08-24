@@ -6,6 +6,7 @@ import { UploadPage } from './pages/UploadPage'
 import { TimetablePage } from './pages/TimetablePage'
 import { GenerateSchedulePage } from './pages/GenerateSchedulePage'
 import { ResourceListPage } from './pages/ResourceListPage'
+import { ElectivesPage } from './pages/ElectivesPage'
 import { ConflictsPage } from './pages/ConflictsPage'
 import { AnalyticsPage } from './pages/AnalyticsPage'
 import { SettingsPage } from './pages/SettingsPage'
@@ -24,6 +25,7 @@ export default function App() {
             <Route path="/faculty" element={<ResourceListPage dataset="faculty" title="Faculty" />} />
             <Route path="/rooms" element={<ResourceListPage dataset="rooms" title="Rooms" />} />
             <Route path="/courses" element={<ResourceListPage dataset="courses" title="Courses" />} />
+            <Route path="/electives" element={<ElectivesPage />} />
             <Route path="/conflicts" element={<ConflictsPage />} />
             <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
