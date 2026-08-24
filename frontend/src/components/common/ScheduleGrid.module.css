@@ -1,0 +1,62 @@
+.scroller {
+  overflow-x: auto;
+  border: 1px solid var(--grid-border);
+  border-radius: var(--radius-sm);
+}
+
+.grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.grid th,
+.grid td {
+  border: 1px solid var(--grid-border);
+  padding: 10px 10px;
+  text-align: center;
+}
+
+.grid thead th {
+  background: var(--grid-header);
+  color: var(--grid-header-ink);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border-color: var(--grid-header);
+}
+
+.dayHead {
+  width: 64px;
+}
+
+.dayCell {
+  background: var(--grid-day);
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 11.5px;
+  letter-spacing: 0.03em;
+  width: 64px;
+}
+
+.rowAlt td:not(.dayCell) {
+  background: var(--grid-row-alt);
+}
+
+.slotCell {
+  line-height: 1.5;
+  color: var(--ink);
+  white-space: pre-line;
+  vertical-align: middle;
+}
+
+.empty {
+  color: var(--ink-faint);
+}
+
+.changedCell {
+  background: var(--accent-soft) !important;
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}

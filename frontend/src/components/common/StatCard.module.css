@@ -1,13 +1,69 @@
+.tintCard {
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-tint);
+  border-color: transparent;
+}
+
+.tintCard::after {
+  content: '';
+  position: absolute;
+  top: -30px;
+  right: -30px;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  opacity: 0.5;
+}
+
+.blob-neutral::after {
+  background: var(--accent-soft);
+}
+.blob-ok::after {
+  background: var(--ok-soft);
+}
+.blob-warn::after {
+  background: var(--warn-soft);
+}
+.blob-error::after {
+  background: var(--error-soft);
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.iconChip {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--bg-card);
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
 .label {
+  position: relative;
+  z-index: 1;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--ink-muted);
-  margin-bottom: 10px;
 }
 
 .valueRow {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: baseline;
   gap: 8px;

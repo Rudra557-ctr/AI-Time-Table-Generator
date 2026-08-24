@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useJob } from '../context/JobContext'
 import { useJobStatus } from '../hooks/useJobStatus'
 import { PageHeader } from '../components/layout/PageHeader'
@@ -8,6 +8,7 @@ import { Button } from '../components/common/Button'
 import { Banner } from '../components/common/Banner'
 import { EmptyState } from '../components/common/EmptyState'
 import { Icon } from '../components/common/Icon'
+import { ScheduleGrid } from '../components/common/ScheduleGrid'
 import {
   fetchTimetableCsvText,
   getDownloadClassPath,
@@ -83,8 +84,12 @@ function PrintSectionGrid({
 export function TimetablePage() {
   const { jobId, hasSolved } = useJob()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [sections, setSections] = useState<string[]>([])
-  const [selected, setSelected] = useState<string | null>(null)
+  // Seeded from ?section= so a click-through from Sections/Faculty/Rooms lands
+  // directly on that section — the sections-list effect below only fills in
+  // a fallback (first section) if this is still empty, never overrides it.
+  const [selected, setSelected] = useState<string | null>(() => searchParams.get('section'))
   const [grid, setGrid] = useState<ClassGrid | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -97,7 +102,6 @@ export function TimetablePage() {
   const inputRef = useRef<HTMLInputElement>(null)
 
   const [optimizing, setOptimizing] = useState(false)
-  const [polish, setPolish] = useState(false)
   const [optimizeError, setOptimizeError] = useState<string | null>(null)
   const [beforeReport, setBeforeReport] = useState<ReportResponse | null>(null)
   const [afterReport, setAfterReport] = useState<ReportResponse | null>(null)
@@ -193,7 +197,10 @@ export function TimetablePage() {
     }
     setOptimizing(true)
     try {
-      await optimizeJob(jobId, { polish })
+      // Gap-repair (LNS) already ran automatically right after generation —
+      // this manual action is now specifically the opt-in polish phase
+      // (faculty-compactness, preferences), always requested here.
+      await optimizeJob(jobId, { polish: true })
     } catch (e) {
       setOptimizing(false)
       setOptimizeError(
@@ -349,40 +356,10 @@ export function TimetablePage() {
           {loading || !grid ? (
             <div className={styles.loading}>Loading grid…</div>
           ) : (
-            <div className={styles.scroller}>
-              <table className={styles.grid}>
-                <thead>
-                  <tr>
-                    <th>Day</th>
-                    {grid.periodHeaders.map((h) => (
-                      <th key={h} className="mono">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {grid.rows.map((row) => (
-                    <tr key={row.day}>
-                      <td className={styles.dayCell}>{row.day}</td>
-                      {row.cells.map((cell, i) => {
-                        const changedHere = changed?.some(
-                          (c) => cell !== '—' && c.new && cell.includes(c.new),
-                        )
-                        return (
-                          <td
-                            key={i}
-                            className={`${styles.slotCell} mono ${cell === '—' ? styles.empty : ''} ${changedHere ? styles.changedCell : ''}`}
-                          >
-                            {cell}
-                          </td>
-                        )
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <ScheduleGrid
+              grid={grid}
+              isCellChanged={(cell) => Boolean(changed?.some((c) => c.new && cell.includes(c.new)))}
+            />
           )}
           {jobId && selected && (
             <div className={styles.downloadRow}>
@@ -408,25 +385,14 @@ export function TimetablePage() {
           )}
         </Card>
 
-        <h3 className={styles.sectionTitle}>Optimize further</h3>
+        <h3 className={styles.sectionTitle}>Polish further (optional)</h3>
         <Card>
           <p className={styles.resolveDesc}>
-            This schedule is valid, but generated fast. Optimizing further
-            repairs section gaps one at a time — the biggest visible win,
-            validated to cut internal gaps ~80% on a real dataset — in{' '}
-            <strong>typically ~2 minutes</strong>.
+            This schedule is already gap-repaired — that happened automatically right after generation, no action
+            needed. This step is a separate, optional extra: faculty-compactness and preference tuning on top of the
+            already-optimized schedule, in <strong>typically ~3 more minutes</strong>. Worth it once you're not
+            racing a clock (e.g. before a final export) — skip it for a live demo.
           </p>
-          <label className={styles.polishRow}>
-            <input
-              type="checkbox"
-              checked={polish}
-              onChange={(e) => setPolish(e.target.checked)}
-              disabled={optimizing}
-            />
-            Also polish faculty-compactness and preferences afterward — adds ~3
-            more minutes, worth it once you're not racing a clock (e.g. before a
-            final export), skip it for a live demo
-          </label>
           <div className={styles.resolveRow}>
             <Button
               onClick={submitOptimize}
@@ -434,27 +400,22 @@ export function TimetablePage() {
               disabled={optimizing}
             >
               {optimizing
-                ? `Optimizing… (${optimizeElapsed}s elapsed)`
-                : 'Optimize further'}
+                ? `Polishing… (${optimizeElapsed}s elapsed)`
+                : 'Polish faculty & preferences'}
             </Button>
           </div>
 
           {optimizeError && (
-            <Banner tone="error" title="Could not optimize">
+            <Banner tone="error" title="Could not polish">
               {optimizeError}
             </Banner>
           )}
 
           {optimizing && (
-            <Banner
-              tone="warn"
-              title={`Still running — ${optimizeElapsed}s of a typical ~${polish ? 300 : 120}s elapsed`}
-            >
-              The grid above is the OLD schedule and will look unchanged until
-              this finishes — it refreshes automatically the moment it's done.
-              Working through gap-structure first, then faculty-compactness,
-              then everything else, in that strict order. Safe to leave this tab
-              open and check back in a few minutes.
+            <Banner tone="warn" title={`Still running — ${optimizeElapsed}s of a typical ~180s elapsed`}>
+              The grid above is unchanged until this finishes — it refreshes automatically the moment it's done.
+              Working through faculty-compactness, then preferences/workload/spread, in that strict order. Safe to
+              leave this tab open and check back in a few minutes.
             </Banner>
           )}
 

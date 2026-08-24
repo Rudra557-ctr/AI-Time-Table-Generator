@@ -58,7 +58,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px 14px;
-  background: var(--bg-card-muted);
+  background: var(--bg-tint);
   border-radius: var(--radius-sm);
   margin-bottom: 16px;
 }
@@ -86,7 +86,7 @@
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
-  background: var(--bg-card-muted);
+  background: var(--bg-tint);
   border-radius: var(--radius-sm);
   color: var(--ink-muted);
   margin-top: 18px;

@@ -9,7 +9,7 @@ import { Button } from '../components/common/Button'
 import { Banner } from '../components/common/Banner'
 import { WeightSlider } from '../components/common/WeightSlider'
 import { EmptyState } from '../components/common/EmptyState'
-import { getWeightDefaults, solveJob } from '../api/endpoints'
+import { getWeightDefaults, solveJob, optimizeJob } from '../api/endpoints'
 import { SolveBlockedError } from '../api/client'
 import { formatStatus, isPendingStatus } from '../utils/formatStatus'
 import styles from './GenerateSchedulePage.module.css'
@@ -54,22 +54,48 @@ export function GenerateSchedulePage() {
   const [weights, setWeights] = useState<Record<string, number>>(FALLBACK_DEFAULTS)
   // This controls ONLY the soft-optimization phase (see generate() below —
   // the hard-constraint phase gets its own fixed, generous budget, not a
-  // slice of this). Default kept small on purpose: this is meant as a fast
-  // first draft, not the final result — "Optimize further" on the
-  // Timetable page does the real structural work afterward (gap-repair,
-  // then faculty/preference polish), so spending a long time polishing a
-  // draft that's about to be reworked anyway is wasted time. Worst case if
-  // this is too small, the result safely degrades to an unpolished-but-
-  // valid schedule (HARD_ONLY_FALLBACK), never nothing.
+  // slice of this). Kept small on purpose: this phase produces a fast draft,
+  // and the automatic LNS gap-repair pass that always runs right after it
+  // does the real structural work (see the solving/optimizing state below) — so spending
+  // a long time here polishing a draft that's about to be gap-repaired
+  // anyway is wasted time. Worst case if this is too small, the result
+  // safely degrades to an unpolished-but-valid schedule (HARD_ONLY_FALLBACK),
+  // never nothing — and gap-repair still runs on top of it either way.
   const [timeBudget, setTimeBudget] = useState(30)
-  const [activeJob, setActiveJob] = useState(false)
+  // Two separate booleans (not one merged "phase" enum) driving two SEPARATE
+  // useJobStatus instances below — each hook stops its own polling loop for
+  // good the moment it sees a terminal status (see useJobStatus.ts), so
+  // reusing a single hook instance across solve-then-optimize would let the
+  // solve phase's terminal status silently kill polling before optimize
+  // ever got a chance to report progress (a real bug this shipped with once
+  // already: "Generating…" stuck forever with a stale terminal status).
+  // Toggling a FRESH hook's `enabled` false->true, as done here, is what
+  // actually restarts a clean polling loop — mirrors TimetablePage's
+  // resolveStatus/optimizeStatus split, the proven pattern for this exact
+  // "kick off background job, then watch until it settles, twice in a row"
+  // shape.
+  const [solving, setSolving] = useState(false)
+  const [optimizing, setOptimizing] = useState(false)
+  const activeJob = solving || optimizing
+  // Which hook's status is currently the "one to display" — set explicitly
+  // at each transition (generate() kickoff, and the solve->optimize
+  // handoff below), not inferred from whether optimizeStatus happens to be
+  // non-null, since that state persists from a PRIOR run and would wrongly
+  // keep showing old optimize results during a fresh second solve.
+  const [displayPhase, setDisplayPhase] = useState<'solve' | 'optimize'>('solve')
   const [kickoffError, setKickoffError] = useState<string | null>(null)
   const [blockers, setBlockers] = useState<string[] | null>(null)
   const [log, setLog] = useState<string[]>([])
   const startedAt = useRef<number | null>(null)
   const [elapsed, setElapsed] = useState(0)
 
-  const { status, isPolling } = useJobStatus(jobId, { enabled: activeJob, intervalMs: 1500 })
+  const { status: solveStatus, isPolling: solvePolling } = useJobStatus(jobId, { enabled: solving, intervalMs: 1500 })
+  const { status: optimizeStatus, isPolling: optimizePolling } = useJobStatus(jobId, {
+    enabled: optimizing,
+    intervalMs: 1500,
+  })
+  const status = displayPhase === 'optimize' ? optimizeStatus : solveStatus
+  const isPolling = solvePolling || optimizePolling
 
   useEffect(() => {
     getWeightDefaults()
@@ -88,18 +114,41 @@ export function GenerateSchedulePage() {
   }, [activeJob])
 
   useEffect(() => {
-    if (!status) return
-    if (!isPendingStatus(status.status)) {
-      setActiveJob(false)
-      appendLog(`Hard phase: ${status.hard_status ?? '—'} in ${status.hard_seconds ?? '—'}s`)
-      appendLog(`Soft phase: ${status.soft_status ?? '—'} in ${status.soft_seconds ?? '—'}s`)
-      appendLog(`Final status: ${status.status}`)
-      if (status.status !== 'INFEASIBLE' && status.status !== 'UNKNOWN' && !status.status.startsWith('ERROR')) {
+    if (!solveStatus || isPendingStatus(solveStatus.status)) return
+    setSolving(false)
+    appendLog(`Hard phase: ${solveStatus.hard_status ?? '—'} in ${solveStatus.hard_seconds ?? '—'}s`)
+    appendLog(`Soft phase: ${solveStatus.soft_status ?? '—'} in ${solveStatus.soft_seconds ?? '—'}s`)
+    const solvedOk =
+      solveStatus.status !== 'INFEASIBLE' && solveStatus.status !== 'UNKNOWN' && !solveStatus.status.startsWith('ERROR')
+    if (!solvedOk) {
+      appendLog(`Final status: ${solveStatus.status}`)
+      return
+    }
+    appendLog('Hard+soft solve complete — automatically repairing gaps (LNS optimize)…')
+    setDisplayPhase('optimize')
+    setOptimizing(true)
+    if (jobId) {
+      optimizeJob(jobId, {}).catch((e) => {
+        appendLog(
+          `Could not start automatic optimization (${e instanceof Error ? e.message : 'unknown error'}) — the generated schedule is still valid, just not gap-repaired.`,
+        )
+        setOptimizing(false)
+        setDisplayPhase('solve')
         markSolved()
-      }
+      })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status?.status])
+  }, [solveStatus?.status])
+
+  useEffect(() => {
+    if (!optimizeStatus || isPendingStatus(optimizeStatus.status)) return
+    setOptimizing(false)
+    const rounds = Array.isArray(optimizeStatus.lns_rounds) ? optimizeStatus.lns_rounds.length : undefined
+    appendLog(`Gap-repair optimize: ${optimizeStatus.status}${rounds !== undefined ? ` (${rounds} rounds)` : ''}`)
+    appendLog('Final status: schedule is generated and optimized.')
+    markSolved()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [optimizeStatus?.status])
 
   function appendLog(line: string) {
     setLog((prev) => [...prev, line])
@@ -125,12 +174,13 @@ export function GenerateSchedulePage() {
     const hardTimeLimit = 150
     const softTimeLimit = timeBudget
     appendLog(`POST /api/solve — hard constraints (≤${hardTimeLimit}s, fixed), then soft optimization (≤${softTimeLimit}s).`)
-    setActiveJob(true)
+    setDisplayPhase('solve')
+    setSolving(true)
     try {
       await solveJob(jobId, { hardTimeLimit, softTimeLimit, weights })
-      appendLog('Solve accepted — running in background.')
+      appendLog('Solve accepted — running in background. Gap-repair optimization will start automatically once it finishes.')
     } catch (e) {
-      setActiveJob(false)
+      setSolving(false)
       if (e instanceof SolveBlockedError) {
         setBlockers(e.blockers)
         appendLog(`Blocked before solving: ${e.blockers.length} blocker(s) found.`)
@@ -163,18 +213,19 @@ export function GenerateSchedulePage() {
 
   return (
     <>
+      {jobId && <div className={styles.jobBadge}>JOB {jobId}</div>}
       <PageHeader
         title="Ready to generate."
-        subtitle="Hard constraints (no clashes, capacity, availability) are always enforced. Soft preferences are optimized using your weights below."
+        subtitle="Hard constraints (no clashes, capacity, availability) are always enforced, soft preferences are optimized using your weights below, then gaps are automatically repaired — one click, one optimized schedule."
       />
 
       <div className={styles.layout}>
         <div className={styles.left}>
           <div className={styles.statGrid}>
-            <StatCard label="Courses" value={audit.courses ?? '—'} />
-            <StatCard label="Faculty" value={audit.faculty ?? '—'} />
-            <StatCard label="Rooms" value={audit.rooms ?? '—'} />
-            <StatCard label="Sections" value={audit.sections ?? '—'} />
+            <StatCard label="Courses" value={audit.courses ?? '—'} icon="book" />
+            <StatCard label="Faculty" value={audit.faculty ?? '—'} icon="cap" />
+            <StatCard label="Rooms" value={audit.rooms ?? '—'} icon="door" />
+            <StatCard label="Sections" value={audit.sections ?? '—'} icon="users" />
           </div>
 
           <Card className={styles.budgetCard}>
@@ -193,10 +244,10 @@ export function GenerateSchedulePage() {
                 seconds
               </label>
               <p className={styles.budgetHint}>
-                Controls soft-preference optimization time (hard constraints always get a separate, generous fixed
-                budget, since a schedule must exist before it can be polished). The solver usually uses the full
-                time searching for a better schedule — lower this for a quick draft, raise it before a final run. If
-                it runs out, you still get a valid, conflict-free schedule — just less optimized.
+                Controls only the initial soft-preference draft (hard constraints always get a separate, generous
+                fixed budget). After this, gap-repair (LNS) runs automatically before you see the result — so the
+                schedule you get is already optimized, no extra step needed. If this phase runs out of time, you
+                still get a valid, conflict-free draft — gap-repair still runs on top of it either way.
               </p>
             </div>
 
@@ -250,16 +301,18 @@ export function GenerateSchedulePage() {
               <span className="mono">CP-SAT SOLVER CONSOLE</span>
             </div>
             <div className={styles.consoleHeadline}>
-              {activeJob
+              {solving
                 ? 'Solving hard constraints → optimizing soft…'
-                : status
-                  ? statusDisplay.label
-                  : 'Idle — configure parameters and generate.'}
+                : optimizing
+                  ? 'Schedule found — automatically repairing gaps (LNS)…'
+                  : status
+                    ? statusDisplay.label
+                    : 'Idle — configure parameters and generate.'}
             </div>
             <div className={styles.telemetry}>
               <div className={styles.tcell}>
                 <div className={styles.tkey}>ELAPSED</div>
-                <div className={`${styles.tval} mono`}>{activeJob ? `${elapsed}s` : status ? `${(status.hard_seconds ?? 0) + (status.soft_seconds ?? 0)}s` : '—'}</div>
+                <div className={`${styles.tval} mono`}>{activeJob ? `${elapsed}s` : status ? `${(status.hard_seconds ?? 0) + (status.soft_seconds ?? 0) + (status.lns_seconds ?? 0)}s` : '—'}</div>
               </div>
               <div className={styles.tcell}>
                 <div className={styles.tkey}>OBJECTIVE</div>
@@ -267,11 +320,17 @@ export function GenerateSchedulePage() {
               </div>
               <div className={styles.tcell}>
                 <div className={styles.tkey}>HARD PHASE</div>
-                <div className={`${styles.tval} mono`}>{status?.hard_status ?? (activeJob ? 'running' : '—')}</div>
+                <div className={`${styles.tval} mono`}>{solveStatus?.hard_status ?? (solving ? 'running' : optimizing || optimizeStatus ? 'done' : '—')}</div>
               </div>
               <div className={styles.tcell}>
-                <div className={styles.tkey}>SOFT PHASE</div>
-                <div className={`${styles.tval} mono`}>{status?.soft_status ?? (activeJob ? 'queued' : '—')}</div>
+                <div className={styles.tkey}>{displayPhase === 'optimize' ? 'GAP-REPAIR (LNS)' : 'SOFT PHASE'}</div>
+                <div className={`${styles.tval} mono`}>
+                  {optimizing
+                    ? 'running'
+                    : displayPhase === 'optimize'
+                      ? (optimizeStatus?.lns_rounds ? `${optimizeStatus.lns_rounds.length} rounds` : (optimizeStatus?.status ?? '—'))
+                      : (solveStatus?.soft_status ?? (solving ? 'queued' : '—'))}
+                </div>
               </div>
             </div>
             <div className={styles.consoleLog}>

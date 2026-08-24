@@ -6,10 +6,10 @@
 }
 
 .chip {
-  padding: 7px 14px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--bg-card);
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  border: 1px solid transparent;
+  background: var(--bg-tint);
   color: var(--ink-muted);
   font-size: 12.5px;
   font-weight: 600;
@@ -30,51 +30,6 @@
   font-size: 13px;
 }
 
-.scroller {
-  overflow-x: auto;
-}
-
-.grid {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 11.5px;
-}
-
-.grid th,
-.grid td {
-  border: 1px solid var(--border);
-  padding: 10px 8px;
-  text-align: center;
-}
-
-.grid th {
-  background: var(--bg-card-muted);
-  color: var(--ink-muted);
-  font-size: 10.5px;
-}
-
-.dayCell {
-  background: var(--bg-card-muted);
-  font-weight: 700;
-  width: 50px;
-}
-
-.slotCell {
-  line-height: 1.5;
-  color: var(--ink);
-  white-space: pre-line;
-}
-
-.empty {
-  color: var(--ink-faint);
-}
-
-.changedCell {
-  background: var(--accent-soft);
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-}
-
 .downloadRow {
   display: flex;
   align-items: center;
@@ -87,15 +42,6 @@
 .sectionTitle {
   font-size: 15px;
   margin: 28px 0 12px;
-}
-
-.polishRow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12.5px;
-  color: var(--ink-muted);
-  margin-bottom: 14px;
 }
 
 .resolveDesc {

@@ -78,6 +78,12 @@ export interface StatusResponse {
   changed_count?: number
   changed?: ChangedEntry[]
 
+  // optimize (LNS gap-repair) fields
+  lns_rounds?: unknown[]
+  lns_objective?: number
+  lns_starting_objective?: number
+  lns_seconds?: number
+
   // error fields
   trace?: string
 }

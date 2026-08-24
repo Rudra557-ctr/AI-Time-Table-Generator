@@ -9,16 +9,24 @@
 }
 
 .iconWrap {
-  width: 44px;
-  height: 44px;
+  width: 46px;
+  height: 46px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: var(--bg-card-muted);
-  border: 1px solid var(--border);
-  color: var(--ink-faint);
+  border: none;
   margin-bottom: 6px;
+}
+
+.neutral {
+  background: var(--bg-tint);
+  color: var(--accent);
+}
+
+.ok {
+  background: var(--ok-soft);
+  color: var(--ok);
 }
 
 .title {

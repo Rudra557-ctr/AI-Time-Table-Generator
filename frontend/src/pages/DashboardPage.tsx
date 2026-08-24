@@ -76,22 +76,25 @@ export function DashboardPage() {
       />
 
       <div className={styles.statRow}>
-        <StatCard label="Scheduled Sessions" value={stats ? stats.sessionCount : '—'} />
+        <StatCard label="Scheduled Sessions" value={stats ? stats.sessionCount : '—'} icon="calendar" />
         <StatCard
           label="Faculty"
           value={audit.faculty ?? '—'}
           suffix={stats ? `${stats.facultyUtilizationPct}% util` : undefined}
+          icon="cap"
         />
         <StatCard
           label="Rooms"
           value={audit.rooms ?? '—'}
           suffix={stats ? `${stats.roomUtilizationPct}% util` : undefined}
+          icon="door"
         />
-        <StatCard label="Sections" value={audit.sections ?? stats?.sectionCount ?? '—'} />
+        <StatCard label="Sections" value={audit.sections ?? stats?.sectionCount ?? '—'} icon="users" />
         <StatCard
           label="Conflicts"
           value={precheck ? precheck.blockers.length : loading ? '—' : 0}
           tone={precheck && precheck.blockers.length > 0 ? 'error' : 'ok'}
+          icon="check"
         />
       </div>
 

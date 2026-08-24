@@ -1,47 +1,57 @@
 :root {
   /* Surfaces */
-  --bg: #f4f6f9;
+  --bg: #eef1fb;
   --bg-sidebar: #ffffff;
   --bg-card: #ffffff;
-  --bg-card-muted: #f6f7f9;
-  --border: #e3e6ea;
-  --border-strong: #cbd1d9;
+  --bg-card-muted: #f4f6fc;
+  --bg-tint: #eef1fb;
+  --border: #e5e9f5;
+  --border-strong: #ccd3ea;
 
   /* Text */
-  --ink: #17191d;
-  --ink-muted: #666c76;
-  --ink-faint: #9298a1;
+  --ink: #16181d;
+  --ink-muted: #666c7a;
+  --ink-faint: #9298a8;
 
-  /* Accent (primary interactive) — used sparingly, not as a fill hue */
-  --accent: #2f5fd6;
-  --accent-deep: #24499f;
-  --accent-soft: #e8edfa;
+  /* Accent (primary interactive) */
+  --accent: #4a63e8;
+  --accent-deep: #3549bd;
+  --accent-soft: #e8ecfd;
   --on-accent: #ffffff;
 
   /* Semantic (separate from the accent hue) */
   --ok: #1f8b4c;
-  --ok-soft: #e6f4ea;
+  --ok-soft: #e5f5ea;
   --warn: #a6650f;
   --warn-soft: #faf0dc;
-  --error: #b3261e;
-  --error-soft: #fbe9e7;
+  --error: #c0392b;
+  --error-soft: #fbe8e6;
+
+  /* Schedule grid — a formal, institutional look, independent of theme
+     (a printed timetable shouldn't invert oddly in dark mode). */
+  --grid-header: #253654;
+  --grid-header-ink: #f3f5fa;
+  --grid-border: #d6dbe8;
+  --grid-row-alt: #f5f7fb;
+  --grid-day: #eef1f8;
 
   /* Solver console — plain dark instrument panel, independent of theme */
-  --console-bg: #14161a;
-  --console-bg-2: #1b1e23;
-  --console-border: #2b2f36;
+  --console-bg: #12141c;
+  --console-bg-2: #1a1d28;
+  --console-border: #2b2f3d;
   --console-text: #e3e5e8;
   --console-muted: #7c828c;
   --console-accent: #7ea2f2;
   --console-ok: #4caf7d;
   --console-warn: #d3a44f;
 
-  /* Flat by design: thin borders do the separating, not shadows/rounding */
-  --radius-sm: 4px;
-  --radius: 6px;
-  --radius-lg: 6px;
-  --shadow-card: none;
-  --shadow-pop: none;
+  /* Rounded, layered surfaces with soft depth */
+  --radius-sm: 10px;
+  --radius: 16px;
+  --radius-lg: 22px;
+  --radius-pill: 999px;
+  --shadow-card: 0 1px 2px rgba(30, 41, 82, 0.04), 0 6px 16px rgba(30, 41, 82, 0.06);
+  --shadow-pop: 0 4px 8px rgba(20, 25, 50, 0.12), 0 16px 32px rgba(20, 25, 50, 0.16);
 
   --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
@@ -49,12 +59,13 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --bg: #101214;
-    --bg-sidebar: #16181b;
-    --bg-card: #16181b;
-    --bg-card-muted: #1b1e21;
-    --border: #2a2d31;
-    --border-strong: #383c42;
+    --bg: #101319;
+    --bg-sidebar: #171a22;
+    --bg-card: #171a22;
+    --bg-card-muted: #1d212b;
+    --bg-tint: #1c2333;
+    --border: #2a2e3a;
+    --border-strong: #3a3f4d;
 
     --ink: #e7e8ea;
     --ink-muted: #9298a1;
@@ -62,7 +73,7 @@
 
     --accent: #7ea2f2;
     --accent-deep: #a4bff6;
-    --accent-soft: #1f2b47;
+    --accent-soft: #212a45;
     --on-accent: #0d1220;
 
     --ok: #57b98a;
@@ -71,16 +82,20 @@
     --warn-soft: #2e2413;
     --error: #e0776e;
     --error-soft: #2e1917;
+
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.2), 0 6px 16px rgba(0, 0, 0, 0.28);
+    --shadow-pop: 0 4px 8px rgba(0, 0, 0, 0.3), 0 16px 32px rgba(0, 0, 0, 0.4);
   }
 }
 
 :root[data-theme='dark'] {
-  --bg: #101214;
-  --bg-sidebar: #16181b;
-  --bg-card: #16181b;
-  --bg-card-muted: #1b1e21;
-  --border: #2a2d31;
-  --border-strong: #383c42;
+  --bg: #101319;
+  --bg-sidebar: #171a22;
+  --bg-card: #171a22;
+  --bg-card-muted: #1d212b;
+  --bg-tint: #1c2333;
+  --border: #2a2e3a;
+  --border-strong: #3a3f4d;
 
   --ink: #e7e8ea;
   --ink-muted: #9298a1;
@@ -88,7 +103,7 @@
 
   --accent: #7ea2f2;
   --accent-deep: #a4bff6;
-  --accent-soft: #1f2b47;
+  --accent-soft: #212a45;
   --on-accent: #0d1220;
 
   --ok: #57b98a;
@@ -97,4 +112,7 @@
   --warn-soft: #2e2413;
   --error: #e0776e;
   --error-soft: #2e1917;
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.2), 0 6px 16px rgba(0, 0, 0, 0.28);
+  --shadow-pop: 0 4px 8px rgba(0, 0, 0, 0.3), 0 16px 32px rgba(0, 0, 0, 0.4);
 }
