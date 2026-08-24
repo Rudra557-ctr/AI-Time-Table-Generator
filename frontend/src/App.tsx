@@ -5,11 +5,11 @@ import { DashboardPage } from './pages/DashboardPage'
 import { UploadPage } from './pages/UploadPage'
 import { TimetablePage } from './pages/TimetablePage'
 import { GenerateSchedulePage } from './pages/GenerateSchedulePage'
+import { HistoryPage } from './pages/HistoryPage'
 import { ResourceListPage } from './pages/ResourceListPage'
 import { ElectivesPage } from './pages/ElectivesPage'
 import { ConflictsPage } from './pages/ConflictsPage'
 import { AnalyticsPage } from './pages/AnalyticsPage'
-import { SettingsPage } from './pages/SettingsPage'
 
 export default function App() {
   return (
@@ -21,6 +21,7 @@ export default function App() {
             <Route path="/upload" element={<UploadPage />} />
             <Route path="/timetable" element={<TimetablePage />} />
             <Route path="/generate" element={<GenerateSchedulePage />} />
+            <Route path="/history" element={<HistoryPage />} />
             <Route path="/sections" element={<ResourceListPage dataset="sections" title="Sections" />} />
             <Route path="/faculty" element={<ResourceListPage dataset="faculty" title="Faculty" />} />
             <Route path="/rooms" element={<ResourceListPage dataset="rooms" title="Rooms" />} />
@@ -28,7 +29,6 @@ export default function App() {
             <Route path="/electives" element={<ElectivesPage />} />
             <Route path="/conflicts" element={<ConflictsPage />} />
             <Route path="/analytics" element={<AnalyticsPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
           </Routes>
         </AppShell>
       </BrowserRouter>

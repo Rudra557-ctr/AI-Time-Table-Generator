@@ -1,13 +1,21 @@
 import { apiFetch } from './client'
 import type {
+  AlternativeSlot,
   DatasetRowsResponse,
+  EditApplyResponse,
+  EditCheckResponse,
+  EditHistoryEntry,
+  EditProposal,
+  JobListResponse,
   OptimizeKickoff,
   PrecheckResponse,
   ReportResponse,
   ResolveKickoff,
+  RoomAlternative,
   SolveKickoff,
   StatusResponse,
   UploadResponse,
+  ValidateAllResponse,
 } from './types'
 
 function filesFormData(files: File[]): FormData {
@@ -66,6 +74,14 @@ export function getStatus(jobId: string): Promise<StatusResponse> {
   return apiFetch<StatusResponse>(`/api/status/${jobId}`)
 }
 
+export function listJobs(limit = 5): Promise<JobListResponse> {
+  return apiFetch<JobListResponse>(`/api/jobs?limit=${limit}`)
+}
+
+export function deleteJob(jobId: string): Promise<{ job_id: string; deleted: boolean }> {
+  return apiFetch<{ job_id: string; deleted: boolean }>(`/api/jobs/${jobId}`, { method: 'DELETE' })
+}
+
 // Plain paths, not full download triggers — the X-API-Key header (when set)
 // can't ride along on a bare <a href> navigation, so actual downloads go
 // through utils/download.ts's downloadWithAuth() instead, which fetches
@@ -98,4 +114,62 @@ export async function fetchTimetableCsvText(jobId: string): Promise<string> {
   const res = await fetch(`/api/download/${jobId}`)
   if (!res.ok) throw new Error(`Could not load timetable (${res.status})`)
   return res.text()
+}
+
+// --- Admin manual timetable editing (sih_solver/manual_edit.py) ---------
+// All synchronous — every op is a single-row CSV mutation plus a bounded
+// validate() call, not a solve, so none of these need the kickoff+poll
+// shape solveJob/resolveJob/optimizeJob use.
+
+export function checkEdit(jobId: string, edit: EditProposal): Promise<EditCheckResponse> {
+  return apiFetch<EditCheckResponse>(`/api/edit/${jobId}/check`, {
+    method: 'POST',
+    body: JSON.stringify(edit),
+  })
+}
+
+export function applyEdit(jobId: string, edit: EditProposal): Promise<EditApplyResponse> {
+  return apiFetch<EditApplyResponse>(`/api/edit/${jobId}/apply`, {
+    method: 'POST',
+    body: JSON.stringify(edit),
+  })
+}
+
+export function findAlternativeSlots(
+  jobId: string,
+  offeringId: string,
+  session: string,
+  maxResults = 5,
+): Promise<{ alternatives: AlternativeSlot[] }> {
+  return apiFetch<{ alternatives: AlternativeSlot[] }>(`/api/edit/${jobId}/alternatives`, {
+    method: 'POST',
+    body: JSON.stringify({ offering_id: offeringId, session, max_results: maxResults }),
+  })
+}
+
+export function findRoomAlternatives(
+  jobId: string,
+  offeringId: string,
+  session: string,
+): Promise<{ rooms: RoomAlternative[] }> {
+  return apiFetch<{ rooms: RoomAlternative[] }>(`/api/edit/${jobId}/room-alternatives`, {
+    method: 'POST',
+    body: JSON.stringify({ offering_id: offeringId, session }),
+  })
+}
+
+export function getEditHistory(jobId: string): Promise<{ history: EditHistoryEntry[] }> {
+  return apiFetch<{ history: EditHistoryEntry[] }>(`/api/edit/${jobId}/history`)
+}
+
+export function undoLastEdit(jobId: string): Promise<EditApplyResponse> {
+  return apiFetch<EditApplyResponse>(`/api/edit/${jobId}/undo`, { method: 'POST' })
+}
+
+export function validateAllEdits(jobId: string): Promise<ValidateAllResponse> {
+  return apiFetch<ValidateAllResponse>(`/api/edit/${jobId}/validate`, { method: 'POST' })
+}
+
+export function publishTimetable(jobId: string): Promise<{ publish_state: 'published' }> {
+  return apiFetch<{ publish_state: 'published' }>(`/api/edit/${jobId}/publish`, { method: 'POST' })
 }

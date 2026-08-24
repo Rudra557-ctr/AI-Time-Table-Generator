@@ -1,0 +1,202 @@
+.currentBlock {
+  background: var(--bg-card-muted);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.currentRow {
+  display: flex;
+  gap: 8px;
+  font-size: 12.5px;
+}
+
+.currentLabel {
+  color: var(--ink-muted);
+  min-width: 64px;
+}
+
+.form {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 560px) {
+  .form {
+    grid-template-columns: 1fr;
+  }
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.field select {
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--ink);
+  padding: 8px 9px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-card);
+}
+
+.actionsRow {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.hint {
+  font-size: 12.5px;
+  color: var(--ink-muted);
+  margin: 4px 0 12px;
+}
+
+.checklist {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 14px;
+  margin: 10px 0 14px;
+}
+
+@media (max-width: 560px) {
+  .checklist {
+    grid-template-columns: 1fr;
+  }
+}
+
+.checkRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+}
+
+.checkFailLabel {
+  color: var(--error);
+  font-weight: 600;
+}
+
+.softBlock {
+  background: var(--bg-card-muted);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+
+.softTitle {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-muted);
+  margin-bottom: 6px;
+}
+
+.softList {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12.5px;
+}
+
+.softWorse {
+  color: var(--warn);
+}
+
+.softBetter {
+  color: var(--ok);
+}
+
+.softNeutral {
+  color: var(--ink-muted);
+  list-style: none;
+  margin-left: -18px;
+}
+
+.weightedDelta {
+  margin-top: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.weightedNote {
+  font-weight: 400;
+  color: var(--ink-muted);
+}
+
+.preexistingNote {
+  font-size: 11.5px;
+  color: var(--ink-faint);
+  margin: -4px 0 12px;
+}
+
+.altPanel {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.altTitle {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-muted);
+}
+
+.altRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 9px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  cursor: pointer;
+  text-align: left;
+  font-size: 12.5px;
+  color: var(--ink);
+}
+
+.altRow:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.altRowDisabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.altImpact {
+  margin-left: auto;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+
+.altReason {
+  margin-left: auto;
+  color: var(--ink-faint);
+  font-size: 11.5px;
+}

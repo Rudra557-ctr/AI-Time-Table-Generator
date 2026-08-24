@@ -9,6 +9,7 @@ interface JobContextValue {
   uploadResult: UploadResponse | null
   hasSolved: boolean
   setJob: (jobId: string, uploadResult: UploadResponse) => void
+  switchJob: (jobId: string, solved: boolean) => void
   markSolved: () => void
   clearJob: () => void
 }
@@ -54,6 +55,17 @@ export function JobProvider({ children }: { children: ReactNode }) {
 
   const markSolved = () => setHasSolved(true)
 
+  // Reopens a job that was generated in a past session (from the History
+  // page) rather than one just produced by this session's own upload+solve
+  // flow — so there's no fresh UploadResponse to hand over. Downstream pages
+  // fall back to the fetched StatusResponse's own audit/report for the
+  // dataset summary once uploadResult is null (see DashboardPage).
+  const switchJob = (id: string, solved: boolean) => {
+    setJobId(id)
+    setUploadResult(null)
+    setHasSolved(solved)
+  }
+
   const clearJob = () => {
     setJobId(null)
     setUploadResult(null)
@@ -61,7 +73,7 @@ export function JobProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <JobContext.Provider value={{ jobId, uploadResult, hasSolved, setJob, markSolved, clearJob }}>
+    <JobContext.Provider value={{ jobId, uploadResult, hasSolved, setJob, switchJob, markSolved, clearJob }}>
       {children}
     </JobContext.Provider>
   )

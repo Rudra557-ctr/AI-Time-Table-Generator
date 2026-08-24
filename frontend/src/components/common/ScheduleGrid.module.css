@@ -60,3 +60,16 @@
   outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
+
+.clickable {
+  cursor: pointer;
+}
+
+.clickable:hover {
+  background: var(--accent-soft);
+}
+
+.clickable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}

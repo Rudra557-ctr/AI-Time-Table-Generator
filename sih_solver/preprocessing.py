@@ -51,7 +51,8 @@ def load_all(root=None):
     for fname in ["courses.csv","rooms.csv","faculty.csv","faculty_courses.csv",
                   "faculty_availability.csv","room_availability.csv","time_slots.csv",
                   "course_offerings.csv","sections.csv","students.csv",
-                  "student_enrollments.csv","elective_groups.csv","elective_group_courses.csv","fixed_events.csv"]:
+                  "student_enrollments.csv","elective_groups.csv","elective_group_courses.csv","fixed_events.csv",
+                  "section_conflicts.csv","parallel_offerings.csv"]:
         try:
             data[fname] = _read(root / fname)
         except FileNotFoundError:
@@ -294,6 +295,25 @@ def elective_alternative_pairs(elective_groups, elective_group_courses, offering
                         continue
                     pairs.add((oids[i], oids[j]))
     return pairs
+
+def parallel_offering_pairs(parallel_offerings_rows):
+    """Extra offering-id pairs a dataset's own generation pipeline has already
+    flagged as legitimate simultaneous alternatives (e.g. two sections
+    offered in parallel, students split between them) -- exempted from HC03
+    the same way elective alt_pairs are. Optional dataset (parallel_offerings.csv,
+    columns offering_id_a,offering_id_b,reason); [] if absent."""
+    return {(r["offering_id_a"], r["offering_id_b"]) for r in parallel_offerings_rows}
+
+def section_conflict_pairs(section_conflicts_rows):
+    """Pairs of section_ids that physically share the same students despite
+    having distinct section_ids -- e.g. a parent cohort (SEC_..._B1) and its
+    lab/tutorial sub-batches (SEC_..._B1_A, SEC_..._B1_B). HC03's own
+    same-section-id grouping can't see this relationship, so these pairs are
+    fed into add_section_collision separately to forbid any session under
+    section_id_a coinciding with any session under section_id_b. Optional
+    dataset (section_conflicts.csv, columns section_id_a,section_id_b,reason);
+    [] if absent."""
+    return {(r["section_id_a"], r["section_id_b"]) for r in section_conflicts_rows}
 
 if __name__=="__main__":
     data=load_all()

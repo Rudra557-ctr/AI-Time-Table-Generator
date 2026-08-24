@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import Papa from 'papaparse'
 import { useJob } from '../context/JobContext'
 import { PageHeader } from '../components/layout/PageHeader'
 import { Card } from '../components/common/Card'
@@ -7,9 +8,26 @@ import { StatCard } from '../components/common/StatCard'
 import { Button } from '../components/common/Button'
 import { EmptyState } from '../components/common/EmptyState'
 import { BarChart, type BarChartBar } from '../components/common/BarChart'
-import { getReport } from '../api/endpoints'
-import type { GapSegmentSummary, ReportResponse } from '../api/types'
+import { getReport, getDatasetRows, fetchTimetableCsvText } from '../api/endpoints'
+import { computeFacultyWorkload, type FacultyWorkload } from '../utils/workload'
+import type { GapSegmentSummary, ReportResponse, TimetableRow } from '../api/types'
 import styles from './AnalyticsPage.module.css'
+
+const WORKLOAD_BUCKETS: { label: string; test: (pct: number) => boolean }[] = [
+  { label: '0-25%', test: (p) => p < 25 },
+  { label: '25-50%', test: (p) => p >= 25 && p < 50 },
+  { label: '50-75%', test: (p) => p >= 50 && p < 75 },
+  { label: '75-100%', test: (p) => p >= 75 && p <= 100 },
+  { label: '100%+', test: (p) => p > 100 },
+]
+
+function workloadBucketBars(workload: FacultyWorkload[]): BarChartBar[] {
+  return WORKLOAD_BUCKETS.map((b) => ({
+    label: b.label,
+    value: workload.filter((w) => b.test(w.pct)).length,
+    tone: b.label === '100%+' ? 'warn' : 'accent',
+  }))
+}
 
 function dayTypeBars(s: GapSegmentSummary): BarChartBar[] {
   return [
@@ -31,6 +49,8 @@ export function AnalyticsPage() {
   const [report, setReport] = useState<ReportResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [workload, setWorkload] = useState<FacultyWorkload[] | null>(null)
+  const [workloadError, setWorkloadError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!jobId || !hasSolved) return
@@ -39,6 +59,16 @@ export function AnalyticsPage() {
       .then(setReport)
       .catch(() => setError('Report not available for this job yet.'))
       .finally(() => setLoading(false))
+  }, [jobId, hasSolved])
+
+  useEffect(() => {
+    if (!jobId || !hasSolved) return
+    Promise.all([fetchTimetableCsvText(jobId), getDatasetRows(jobId, 'faculty')])
+      .then(([csvText, facultyRes]) => {
+        const parsed = Papa.parse<TimetableRow>(csvText, { header: true, skipEmptyLines: true })
+        setWorkload(computeFacultyWorkload(parsed.data, facultyRes.rows))
+      })
+      .catch(() => setWorkloadError('Faculty workload data not available for this job yet.'))
   }, [jobId, hasSolved])
 
   if (!jobId || !hasSolved) {
@@ -160,6 +190,70 @@ export function AnalyticsPage() {
               </details>
             </Card>
           </div>
+
+          <h3 className={styles.sectionTitle}>Faculty Workload</h3>
+          {workloadError && <Card><EmptyState icon="cap" title="Not available" description={workloadError} /></Card>}
+          {workload && workload.length > 0 && (
+            <>
+              <div className={styles.statGrid}>
+                <StatCard
+                  label="Mean utilization"
+                  value={`${Math.round(workload.reduce((s, w) => s + w.pct, 0) / workload.length)}%`}
+                />
+                <StatCard
+                  label="Over-loaded (>100%)"
+                  value={workload.filter((w) => w.pct > 100).length}
+                  tone={workload.some((w) => w.pct > 100) ? 'error' : 'ok'}
+                />
+                <StatCard
+                  label="Under-utilized (<50%)"
+                  value={workload.filter((w) => w.pct < 50).length}
+                  tone="warn"
+                />
+                <StatCard
+                  label="Well-balanced (50-100%)"
+                  value={workload.filter((w) => w.pct >= 50 && w.pct <= 100).length}
+                  tone="ok"
+                />
+              </div>
+              <div className={styles.chartGrid}>
+                <Card>
+                  <h4 className={styles.chartTitle}>Utilization distribution</h4>
+                  <p className={styles.chartSubtitle}>Faculty count by assigned-hours ÷ max-hours-per-week bucket.</p>
+                  <BarChart bars={workloadBucketBars(workload)} />
+                </Card>
+                <Card>
+                  <h4 className={styles.chartTitle}>Most-loaded faculty</h4>
+                  <p className={styles.chartSubtitle}>Top 5 by utilization — real assigned hours vs. their weekly max.</p>
+                  <table className={styles.dataTable}>
+                    <thead>
+                      <tr>
+                        <th>Faculty</th>
+                        <th>Hours</th>
+                        <th>Utilization</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[...workload]
+                        .sort((a, b) => b.pct - a.pct)
+                        .slice(0, 5)
+                        .map((w) => (
+                          <tr key={w.faculty_id}>
+                            <td>
+                              {w.name} <span className={styles.idTag}>({w.faculty_id})</span>
+                            </td>
+                            <td className="mono">
+                              {w.assignedHours}/{w.maxHours}h
+                            </td>
+                            <td className="mono">{w.pct}%</td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </Card>
+              </div>
+            </>
+          )}
         </>
       )}
     </>

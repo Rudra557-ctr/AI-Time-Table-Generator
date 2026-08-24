@@ -42,14 +42,30 @@ def _solve_once(model, time_limit, seed, num_workers=8):
     return solver, status, time.time() - t0
 
 
-def _solve_hard_only(root, hard_time_limit, seeds):
+def _solve_hard_only(root, hard_time_limit, seeds, initial_hint_csv=None):
     """Shared by solve_hard_then_soft and solve_fresh_lexicographic: hard-only
     (no objective), retrying seeds in order, stopping at the first
     OPTIMAL/FEASIBLE. Returns (model, Start, Teacher, Room, meta, hard_solver,
     hard_status, hard_seconds, seed_used, terminal) — `terminal` is a ready-to
     -return dict (INFEASIBLE, or UNKNOWN if every seed came back empty) or
-    None if a usable hard_solver was found and the caller should proceed."""
+    None if a usable hard_solver was found and the caller should proceed.
+
+    initial_hint_csv: optional path to a previously-generated timetable (same
+    shape hint_from_csv expects) to warm-start the search from — proven fix
+    for datasets whose hard model is too big to solve cold within any
+    reasonable time budget (PLAN.md: a real 555k-variable dataset came back
+    UNKNOWN even at 300s cold, but OPTIMAL at 34.8s warm-started from its own
+    historical schedule). AddHint is applied once, before any seed attempt,
+    directly on `model` -- CP-SAT's solution_hint lives on the model proto,
+    not the solver, so it carries across every seed's Solve(model) call below.
+    """
     model, Start, Teacher, Room, meta = build_full_hard_model(root)
+    if initial_hint_csv is not None:
+        var_dicts = {"Start": Start, "Teacher": Teacher, "Room": Room}
+        for (kind, key), val in hint_from_csv(initial_hint_csv, meta).items():
+            var = var_dicts[kind].get(key)
+            if var is not None:
+                model.AddHint(var, val)
     hard_solver = None
     hard_status = None
     hard_seconds = 0.0
@@ -80,15 +96,19 @@ def _solve_hard_only(root, hard_time_limit, seeds):
 
 
 def solve_hard_then_soft(root, hard_time_limit=150.0, soft_time_limit=120.0,
-                          seeds=(0, 1, 42), weights=None):
+                          seeds=(0, 1, 42), weights=None, initial_hint_csv=None):
     """Returns a dict:
       status: "OPTIMAL_SOFT" | "FEASIBLE_SOFT" | "HARD_ONLY_FALLBACK" | "INFEASIBLE" | "UNKNOWN"
       solver: the CpSolver to read the final assignment from (.Value(...))
       Start, Teacher, Room, meta: the model's variables/metadata
       hard_status, soft_status, seed_used, hard_seconds, soft_seconds, objective: diagnostics
+
+    initial_hint_csv: see _solve_hard_only — optional warm-start from a prior
+    timetable CSV (e.g. a job's uploaded initial_schedule.csv on its very
+    first solve, before any solve_incremental_resolve has ever run).
     """
     model, Start, Teacher, Room, meta, hard_solver, hard_status, hard_seconds, seed_used, terminal = \
-        _solve_hard_only(root, hard_time_limit, seeds)
+        _solve_hard_only(root, hard_time_limit, seeds, initial_hint_csv=initial_hint_csv)
     if terminal is not None:
         return terminal
 
@@ -101,6 +121,15 @@ def solve_hard_then_soft(root, hard_time_limit=150.0, soft_time_limit=120.0,
 
     # Phase 2: hint into the combined hard+soft model, solve soft.
     add_soft_objective(model, Start, Teacher, Room, meta, weights or DEFAULT_WEIGHTS)
+    # ClearHints first: when initial_hint_csv warm-started the hard phase above,
+    # `model` already carries those hints (AddHint appends rather than replaces
+    # on this OR-Tools version -- see comment below). Re-hinting the
+    # just-found hard solution on top would duplicate entries for the same
+    # variable, which model.Validate() rejects wholesale as MODEL_INVALID
+    # (confirmed: "solution hint contains duplicate variables"). The hard
+    # solution below is a strict superset of information anyway (it reflects
+    # wherever the warm start actually landed), so clearing first is safe.
+    model.ClearHints()
     # This installed OR-Tools version's AddHint takes one (var, value) pair per
     # call (appends to the solution_hint proto), not batched lists — confirmed
     # by reading cp_model.py's add_hint() source after a TypeError revealed the

@@ -150,10 +150,17 @@ def _add_disjoint_pair(model, Start, next_Start, a, b):
         if (oid2, s2) in next_Start:
             model.Add(Start[(oid1, s1)] != next_Start[(oid2, s2)])
 
-def add_section_collision(model, Start, offerings, time_slots=None, sync_groups=None, alt_pairs=None):
+def add_section_collision(model, Start, offerings, time_slots=None, sync_groups=None, alt_pairs=None,
+                           conflict_pairs=None):
     """HC03: No section double-booking – FIXED via next handling.
     Alternative offerings in the same synchronized elective group (same section)
     are skipped (a student attends only one).
+
+    conflict_pairs: optional set of (section_id_a, section_id_b) pairs whose
+    sections physically share the same students despite having distinct
+    section_ids (e.g. a parent cohort and its lab/tutorial sub-batches, from
+    section_conflicts.csv). Sessions under section_id_a are forbidden from
+    coinciding with sessions under section_id_b, same as within-section HC03.
     """
     from collections import defaultdict
     if alt_pairs is None:
@@ -171,11 +178,15 @@ def add_section_collision(model, Start, offerings, time_slots=None, sync_groups=
         for o in offerings:
             for s in range(int(o["required_sessions"])):
                 sec_to_sessions[o["section_id"]].append((o["offering_id"], s))
-        for sec, sess_list in sec_to_sessions.items():
-            for (oid1,s1), (oid2,s2) in itertools.combinations(sess_list, 2):
+        def _no_overlap(pairs):
+            for (oid1,s1), (oid2,s2) in pairs:
                 if is_alt(oid1, oid2):
                     continue
                 model.Add(Start[(oid1,s1)] != Start[(oid2,s2)])
+        for sec, sess_list in sec_to_sessions.items():
+            _no_overlap(itertools.combinations(sess_list, 2))
+        for (sec_a, sec_b) in (conflict_pairs or ()):
+            _no_overlap(itertools.product(sec_to_sessions.get(sec_a, []), sec_to_sessions.get(sec_b, [])))
         return
     slot_to_idx, idx_to_slot, slot_next = _build_slot_maps(time_slots)
     all_slots = [s["slot_id"] for s in time_slots]
@@ -194,8 +205,8 @@ def add_section_collision(model, Start, offerings, time_slots=None, sync_groups=
         d = int(o["session_duration"])
         for s in range(int(o["required_sessions"])):
             sec_to_sessions[o["section_id"]].append((o["offering_id"], s, d))
-    for sec, sess_list in sec_to_sessions.items():
-        for (oid1,s1,d1), (oid2,s2,d2) in itertools.combinations(sess_list, 2):
+    def _no_overlap(pairs):
+        for (oid1,s1,d1), (oid2,s2,d2) in pairs:
             if is_alt(oid1, oid2):
                 continue
             model.Add(Start[(oid1,s1)] != Start[(oid2,s2)])
@@ -207,6 +218,10 @@ def add_section_collision(model, Start, offerings, time_slots=None, sync_groups=
                 model.Add(next_Start[(oid1,s1)] != Start[(oid2,s2)])
             elif d2==2:
                 model.Add(Start[(oid1,s1)] != next_Start[(oid2,s2)])
+    for sec, sess_list in sec_to_sessions.items():
+        _no_overlap(itertools.combinations(sess_list, 2))
+    for (sec_a, sec_b) in (conflict_pairs or ()):
+        _no_overlap(itertools.product(sec_to_sessions.get(sec_a, []), sec_to_sessions.get(sec_b, [])))
 
 
 def _req(offerings, oid):

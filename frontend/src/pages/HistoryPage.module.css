@@ -1,0 +1,154 @@
+.loading {
+  padding: 40px;
+  text-align: center;
+  color: var(--ink-muted);
+  font-size: 13px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.currentCard {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.jobId {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.headActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.currentBadge {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent-deep);
+  background: var(--accent-soft);
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+.deleteIconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--ink-faint);
+  cursor: pointer;
+  flex: none;
+}
+
+.deleteIconBtn:hover {
+  background: var(--error-soft);
+  color: var(--error);
+}
+
+.when {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--ink-muted);
+  margin-bottom: 14px;
+}
+
+.pillRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.chip {
+  font-size: 11.5px;
+  color: var(--ink-muted);
+  background: var(--bg-tint);
+  border-radius: var(--radius-sm);
+  padding: 4px 9px;
+}
+
+.chipValue {
+  font-weight: 700;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.viewRow {
+  display: flex;
+}
+
+.viewRow > * {
+  width: 100%;
+  justify-content: center;
+}
+
+.confirmText {
+  font-size: 13.5px;
+  color: var(--ink);
+  line-height: 1.5;
+  margin: 0 0 10px;
+}
+
+.confirmWarn {
+  font-size: 12.5px;
+  color: var(--warn);
+  background: var(--warn-soft);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  margin: 0 0 10px;
+}
+
+.confirmDeleteBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 20px;
+  border-radius: var(--radius-pill);
+  font-size: 13.5px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+  background: var(--error);
+  color: var(--on-accent);
+  transition: opacity 150ms ease;
+}
+
+.confirmDeleteBtn:hover:not(:disabled) {
+  opacity: 0.88;
+}
+
+.confirmDeleteBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}

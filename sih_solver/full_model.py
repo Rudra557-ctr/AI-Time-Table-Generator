@@ -216,7 +216,8 @@ def build_full_hard_model(root=None, limit_offerings=None):
         offs = meta["offerings"][:limit_offerings]
         pass
     # Add core collisions – FIXED to handle duration 2 via occupied sets
-    from .preprocessing import synchronized_offering_groups, elective_alternative_pairs
+    from .preprocessing import (synchronized_offering_groups, elective_alternative_pairs,
+                                 parallel_offering_pairs, section_conflict_pairs)
     sync_groups = synchronized_offering_groups(meta["data"]["elective_groups.csv"],
                                                meta["data"]["elective_group_courses.csv"],
                                                meta["offerings"])
@@ -224,9 +225,18 @@ def build_full_hard_model(root=None, limit_offerings=None):
                                            meta["data"]["elective_group_courses.csv"],
                                            meta["offerings"],
                                            meta["data"]["student_enrollments.csv"])
+    # Extra alternative pairs the dataset's own pipeline already flagged
+    # (parallel_offerings.csv, optional) -- union in, same exemption as elective alt_pairs.
+    alt_pairs = alt_pairs | parallel_offering_pairs(meta["data"]["parallel_offerings.csv"])
+    # Cross-section conflicts the dataset's own pipeline already flagged
+    # (section_conflicts.csv, optional) -- e.g. a parent cohort and its
+    # lab/tutorial sub-batches, which have distinct section_ids so HC03's
+    # same-section-id grouping alone can't see they share physical students.
+    conflict_pairs = section_conflict_pairs(meta["data"]["section_conflicts.csv"])
     add_faculty_collision(model, Start, Teacher, meta["offerings"], meta["data"]["time_slots.csv"])
     add_room_collision(model, Start, Room, meta["offerings"], meta["data"]["time_slots.csv"])
-    add_section_collision(model, Start, meta["offerings"], meta["data"]["time_slots.csv"], sync_groups, alt_pairs)
+    add_section_collision(model, Start, meta["offerings"], meta["data"]["time_slots.csv"], sync_groups, alt_pairs,
+                           conflict_pairs)
     # HC12 no repeat same course same day
     add_no_repeat_same_course_same_day(model, Start, meta)
     # HC04 student-level elective collision

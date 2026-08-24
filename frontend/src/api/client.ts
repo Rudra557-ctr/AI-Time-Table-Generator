@@ -53,6 +53,31 @@ export class ResolveRequiresSolveError extends ApiError {
   }
 }
 
+/** Thrown on HTTP 422 from /api/edit/*\/apply or /undo — the proposed change
+ * (or, for undo, reverting to the prior state) would introduce a real
+ * hard-constraint violation and was rejected before being written anywhere.
+ * `violations` carries validate_output.py's own human-readable reasons —
+ * already written for a person, never CP-SAT/model internals. */
+export class EditRejectedError extends ApiError {
+  checks: { label: string; ok: boolean }[]
+  violations: string[]
+  constructor(body: ApiErrorBody & { checks?: { label: string; ok: boolean }[]; violations?: string[] }) {
+    super(body.error, 422, body)
+    this.name = 'EditRejectedError'
+    this.checks = body.checks || []
+    this.violations = body.violations || []
+  }
+}
+
+/** Thrown on HTTP 409 from /api/edit/*\/publish — the last whole-file
+ * validate wasn't clean (or hasn't been run since the last edit). */
+export class PublishBlockedError extends ApiError {
+  constructor(body: ApiErrorBody) {
+    super(body.error, 409, body)
+    this.name = 'PublishBlockedError'
+  }
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const key = getStoredApiKey()
   const headers = new Headers(init?.headers)
@@ -73,6 +98,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     if (res.status === 422 && path.includes('/api/solve')) throw new SolveBlockedError(body)
     if (res.status === 422 && path.includes('/api/resolve')) throw new SolveBlockedError(body)
     if (res.status === 400 && path.includes('/api/resolve')) throw new ResolveRequiresSolveError(body)
+    if (res.status === 422 && path.includes('/api/edit/')) throw new EditRejectedError(body)
+    if (res.status === 409 && path.includes('/publish')) throw new PublishBlockedError(body)
     throw new ApiError(body.error || res.statusText, res.status, body)
   }
 

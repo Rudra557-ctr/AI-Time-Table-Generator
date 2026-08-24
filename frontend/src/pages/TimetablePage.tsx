@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import Papa from 'papaparse'
 import { useJob } from '../context/JobContext'
 import { useJobStatus } from '../hooks/useJobStatus'
 import { PageHeader } from '../components/layout/PageHeader'
@@ -9,8 +10,11 @@ import { Banner } from '../components/common/Banner'
 import { EmptyState } from '../components/common/EmptyState'
 import { Icon } from '../components/common/Icon'
 import { ScheduleGrid } from '../components/common/ScheduleGrid'
+import { EditClassModal } from './EditClassModal'
+import { EditWorkflowPanel } from './EditWorkflowPanel'
 import {
   fetchTimetableCsvText,
+  getDatasetRows,
   getDownloadClassPath,
   getDownloadPath,
   getReport,
@@ -26,7 +30,7 @@ import {
 } from '../utils/csv'
 import { ResolveRequiresSolveError, SolveBlockedError } from '../api/client'
 import { isPendingStatus } from '../utils/formatStatus'
-import type { ChangedEntry, ReportResponse } from '../api/types'
+import type { ChangedEntry, ReportResponse, TimetableRow } from '../api/types'
 import styles from './TimetablePage.module.css'
 
 const OPTIMIZE_ROWS: { label: string; pick: (r: ReportResponse) => number }[] =
@@ -113,6 +117,12 @@ export function TimetablePage() {
     null,
   )
   const [preparingPrintAll, setPreparingPrintAll] = useState(false)
+
+  // Admin manual edit: click a class in the grid to move/reassign it.
+  const [flatRows, setFlatRows] = useState<TimetableRow[] | null>(null)
+  const [courseMeta, setCourseMeta] = useState<Map<string, { code: string; duration: number }>>(new Map())
+  const [editingRow, setEditingRow] = useState<TimetableRow | null>(null)
+  const [editRefreshKey, setEditRefreshKey] = useState(0)
 
   const { status: resolveStatus } = useJobStatus(jobId, {
     enabled: resolving,
@@ -221,6 +231,68 @@ export function TimetablePage() {
         setError(e instanceof Error ? e.message : 'Could not load timetable.'),
       )
   }, [jobId, hasSolved])
+
+  // Flat rows + course metadata, needed to resolve a clicked grid cell (day +
+  // period header) back into the actual (offering_id, session) row the edit
+  // modal needs — reloaded after every applied edit (editRefreshKey) since
+  // the flat timetable changes then, same refresh trigger the workflow panel
+  // below uses for its own history reload.
+  useEffect(() => {
+    if (!jobId || !hasSolved) return
+    Promise.all([fetchTimetableCsvText(jobId), getDatasetRows(jobId, 'courses')])
+      .then(([csvText, coursesRes]) => {
+        const parsed = Papa.parse<TimetableRow>(csvText, { header: true, skipEmptyLines: true })
+        setFlatRows(parsed.data)
+        setCourseMeta(
+          new Map(
+            coursesRes.rows.map((c) => [
+              c.course_id,
+              { code: c.course_code || c.course_id, duration: Number(c.session_duration) || 1 },
+            ]),
+          ),
+        )
+      })
+      .catch(() => {})
+  }, [jobId, hasSolved, editRefreshKey])
+
+  function refreshSelectedGrid() {
+    if (!jobId || !selected) return
+    fetch(getDownloadClassPath(jobId, selected))
+      .then((r) => r.text())
+      .then((text) => setGrid(parseClassGridCsv(text)))
+  }
+
+  function handleEditApplied() {
+    refreshSelectedGrid()
+    setEditRefreshKey((k) => k + 1)
+  }
+
+  function handleCellClick(day: string, periodHeader: string) {
+    if (!flatRows || !selected) return
+    const [start] = periodHeader.split('-')
+    let row = flatRows.find(
+      (r) => r.section_id === selected && r.day === day && r.start_time === start && r.slot_id !== 'UNASSIGNED',
+    )
+    if (!row) {
+      // Might be the 2nd half of a 2-hour class -- the grid repeats the same
+      // entry in the following column, but the flat row's own start_time is
+      // the FIRST slot only. Check the previous period header instead.
+      const headers = grid?.periodHeaders ?? []
+      const idx = headers.indexOf(periodHeader)
+      if (idx > 0) {
+        const [prevStart] = headers[idx - 1].split('-')
+        row = flatRows.find(
+          (r) =>
+            r.section_id === selected &&
+            r.day === day &&
+            r.start_time === prevStart &&
+            r.slot_id !== 'UNASSIGNED' &&
+            (courseMeta.get(r.course_id)?.duration ?? 1) === 2,
+        )
+      }
+    }
+    if (row) setEditingRow(row)
+  }
 
   useEffect(() => {
     if (!jobId || !selected) return
@@ -356,10 +428,14 @@ export function TimetablePage() {
           {loading || !grid ? (
             <div className={styles.loading}>Loading grid…</div>
           ) : (
-            <ScheduleGrid
-              grid={grid}
-              isCellChanged={(cell) => Boolean(changed?.some((c) => c.new && cell.includes(c.new)))}
-            />
+            <>
+              <p className={styles.editHint}>Click any scheduled class to move it, change its room, or reassign faculty.</p>
+              <ScheduleGrid
+                grid={grid}
+                isCellChanged={(cell) => Boolean(changed?.some((c) => c.new && cell.includes(c.new)))}
+                onCellClick={handleCellClick}
+              />
+            </>
           )}
           {jobId && selected && (
             <div className={styles.downloadRow}>
@@ -384,6 +460,8 @@ export function TimetablePage() {
             </div>
           )}
         </Card>
+
+        {jobId && <EditWorkflowPanel jobId={jobId} refreshKey={editRefreshKey} onChanged={handleEditApplied} />}
 
         <h3 className={styles.sectionTitle}>Polish further (optional)</h3>
         <Card>
@@ -578,6 +656,16 @@ export function TimetablePage() {
             <PrintSectionGrid key={s} title={s} grid={allGrids[s]} />
           ))}
       </div>
+
+      {jobId && editingRow && (
+        <EditClassModal
+          jobId={jobId}
+          row={editingRow}
+          courseLabel={courseMeta.get(editingRow.course_id)?.code ?? editingRow.course_id}
+          onClose={() => setEditingRow(null)}
+          onApplied={handleEditApplied}
+        />
+      )}
     </>
   )
 }

@@ -14,6 +14,7 @@ import { getDatasetRows, fetchTimetableCsvText } from '../api/endpoints'
 import type { IconName } from '../components/common/Icon'
 import type { TimetableRow } from '../api/types'
 import type { ClassGrid } from '../utils/csv'
+import { computeFacultyWorkload } from '../utils/workload'
 import styles from './ResourceListPage.module.css'
 
 const ICONS: Record<string, IconName> = { sections: 'users', faculty: 'cap', rooms: 'door', courses: 'book' }
@@ -160,10 +161,15 @@ function FacultyList({
   expanded: string | null
   onToggle: (id: string) => void
 }) {
+  const workloadById = new Map(
+    occupancy.fullRows ? computeFacultyWorkload(occupancy.fullRows, rows).map((w) => [w.faculty_id, w]) : [],
+  )
+
   return (
     <ul className={styles.entityList}>
       {rows.map((r) => {
         const max = Number(r.max_hours_per_week) || 0
+        const workload = workloadById.get(r.faculty_id)
         const isOpen = expanded === r.faculty_id
         return (
           <li key={r.faculty_id} className={styles.entityRow}>
@@ -182,9 +188,11 @@ function FacultyList({
               </div>
               <div className={styles.entityBarRow}>
                 <div className={styles.entityBar}>
-                  <ProgressBar value={0} />
+                  <ProgressBar value={workload ? Math.min(workload.pct, 100) : 0} tone={workload && workload.pct > 100 ? 'warn' : 'accent'} />
                 </div>
-                <span className={`${styles.entityBarLabel} mono`}>0/{max}h</span>
+                <span className={`${styles.entityBarLabel} mono`}>
+                  {workload ? `${workload.assignedHours}/${max}h` : `—/${max}h`}
+                </span>
               </div>
             </button>
             {isOpen && (
@@ -265,6 +273,14 @@ export function ResourceListPage({ dataset, title }: { dataset: string; title: s
       .catch(() => setError(`${dataset}.csv wasn't found in this upload.`))
       .finally(() => setLoading(false))
   }, [jobId, dataset])
+
+  useEffect(() => {
+    // Faculty workload bars are shown for every row immediately (not gated
+    // behind a click, unlike the occupancy grid), so this dataset needs the
+    // full timetable loaded eagerly rather than waiting for a row expand.
+    if (dataset === 'faculty' && hasSolved) occupancy.ensureLoaded()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataset, hasSolved, jobId])
 
   function toggleExpanded(id: string) {
     const next = expanded === id ? null : id

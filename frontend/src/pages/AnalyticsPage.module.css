@@ -78,3 +78,8 @@
 .dataTable th:last-child {
   text-align: right;
 }
+
+.idTag {
+  font-size: 10.5px;
+  color: var(--ink-faint);
+}

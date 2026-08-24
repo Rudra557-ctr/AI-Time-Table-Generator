@@ -7,6 +7,7 @@ const NAV_ITEMS: { to: string; label: string; icon: IconName }[] = [
   { to: '/upload', label: 'Upload Data', icon: 'upload' },
   { to: '/timetable', label: 'Timetable', icon: 'calendar' },
   { to: '/generate', label: 'Generate Schedule', icon: 'play' },
+  { to: '/history', label: 'History', icon: 'history' },
   { to: '/sections', label: 'Sections', icon: 'users' },
   { to: '/faculty', label: 'Faculty', icon: 'cap' },
   { to: '/rooms', label: 'Rooms', icon: 'door' },
@@ -17,7 +18,6 @@ const NAV_ITEMS: { to: string; label: string; icon: IconName }[] = [
 
 const NAV_ITEMS_LOWER: { to: string; label: string; icon: IconName }[] = [
   { to: '/analytics', label: 'Analytics', icon: 'chart' },
-  { to: '/settings', label: 'Settings', icon: 'gear' },
 ]
 
 export function Sidebar() {

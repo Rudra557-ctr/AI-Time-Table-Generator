@@ -4,9 +4,11 @@ import styles from './ScheduleGrid.module.css'
 export function ScheduleGrid({
   grid,
   isCellChanged,
+  onCellClick,
 }: {
   grid: ClassGrid
   isCellChanged?: (cell: string) => boolean
+  onCellClick?: (day: string, periodHeader: string) => void
 }) {
   return (
     <div className={styles.scroller}>
@@ -27,10 +29,24 @@ export function ScheduleGrid({
               <td className={styles.dayCell}>{row.day}</td>
               {row.cells.map((cell, i) => {
                 const changedHere = cell !== '—' && isCellChanged?.(cell)
+                const clickable = Boolean(onCellClick) && cell !== '—'
                 return (
                   <td
                     key={i}
-                    className={`${styles.slotCell} mono ${cell === '—' ? styles.empty : ''} ${changedHere ? styles.changedCell : ''}`}
+                    className={`${styles.slotCell} mono ${cell === '—' ? styles.empty : ''} ${changedHere ? styles.changedCell : ''} ${clickable ? styles.clickable : ''}`}
+                    onClick={clickable ? () => onCellClick?.(row.day, grid.periodHeaders[i]) : undefined}
+                    role={clickable ? 'button' : undefined}
+                    tabIndex={clickable ? 0 : undefined}
+                    onKeyDown={
+                      clickable
+                        ? (e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault()
+                              onCellClick?.(row.day, grid.periodHeaders[i])
+                            }
+                          }
+                        : undefined
+                    }
                   >
                     {cell}
                   </td>

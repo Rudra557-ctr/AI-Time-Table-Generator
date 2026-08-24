@@ -16,6 +16,12 @@ export type IconName =
   | 'arrowRight'
   | 'download'
   | 'print'
+  | 'edit'
+  | 'close'
+  | 'undo'
+  | 'history'
+  | 'room'
+  | 'trash'
 
 const common = {
   width: 18,
@@ -151,6 +157,48 @@ export function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
           <path d="M6 9V3h12v6" />
           <rect x="4" y="9" width="16" height="8" rx="1.5" />
           <path d="M6 14h12v7H6z" />
+        </svg>
+      )
+    case 'edit':
+      return (
+        <svg {...props}>
+          <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+        </svg>
+      )
+    case 'close':
+      return (
+        <svg {...props}>
+          <path d="M6 6l12 12M18 6L6 18" />
+        </svg>
+      )
+    case 'undo':
+      return (
+        <svg {...props}>
+          <path d="M4 10h9a5 5 0 0 1 0 10H9" />
+          <path d="M8 5L4 10l4 5" />
+        </svg>
+      )
+    case 'history':
+      return (
+        <svg {...props}>
+          <path d="M4 12a8 8 0 1 0 3-6.2" />
+          <path d="M4 4v4.5H8.5" />
+          <path d="M12 8v4l3 2" />
+        </svg>
+      )
+    case 'room':
+      return (
+        <svg {...props}>
+          <rect x="3.5" y="4.5" width="17" height="15" rx="1.5" />
+          <path d="M3.5 10h17M8 4.5V10" />
+        </svg>
+      )
+    case 'trash':
+      return (
+        <svg {...props}>
+          <path d="M4 7h16M9 7V4.5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1V7" />
+          <path d="M6 7l1 13a2 2 0 0 0 2 1.8h6a2 2 0 0 0 2-1.8l1-13" />
+          <path d="M10 11v6M14 11v6" />
         </svg>
       )
   }

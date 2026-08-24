@@ -20,12 +20,41 @@
                                         shown to converge) -- adds ~3min more; skip it under time pressure,
                                         it's an explicit opt-in either way, not the /api/solve default
                                         (which stays fast). Requires /api/solve first.
+  GET  /api/jobs                    -> recent jobs across ALL uploads, newest first (job_id,
+                                        created_at, status, publish_state, dataset audit,
+                                        has_timetable) -- lets the admin reopen a past
+                                        generated timetable, not just the most recent one
+  DELETE /api/jobs/{job_id}         -> permanently deletes a job's directory (uploads,
+                                        normalized data, generated timetable, edit history)
   GET  /api/status/{job_id}
   GET  /api/download/{job_id}, /api/download_class/{job_id}/{section}
   GET  /api/weights/defaults        -> soft.DEFAULT_WEIGHTS, so the frontend never hardcodes them separately
   GET  /api/data/{job_id}/{dataset} -> normalized/{dataset}.csv as JSON rows (read-only; dataset in adapter.CANONICAL)
   GET  /api/report/{job_id}         -> gap_stats.compute_stats on the job's generated_timetable.csv (409 if no solve yet)
   GET  /api/precheck/{job_id}       -> quick_solvability_check standalone (no solve side effect)
+
+  -- Admin manual timetable editing (sih_solver/manual_edit.py). All
+     synchronous (no background_tasks/polling) -- every op here is a
+     single-row CSV mutation plus a bounded validate() call, not a solve.
+  POST /api/edit/{job_id}/check           -> preview a proposed move/room/faculty
+                                              change: hard-constraint checklist +
+                                              soft-quality delta, does NOT apply it
+  POST /api/edit/{job_id}/apply           -> re-validates server-side (never trusts
+                                              a prior /check call) and, if valid,
+                                              commits the edit + regenerates grids
+  POST /api/edit/{job_id}/alternatives    -> ranked valid (day/slot/room) candidates
+                                              for one session, by soft-quality impact
+  POST /api/edit/{job_id}/room-alternatives -> compatible rooms for one session,
+                                              each flagged valid/invalid with why
+  GET  /api/edit/{job_id}/history         -> this job's edit history
+  POST /api/edit/{job_id}/undo            -> re-applies the inverse of the most
+                                              recent edit, through the same /apply path
+  POST /api/edit/{job_id}/validate        -> whole-timetable re-validation (not
+                                              scoped to one edit) + soft-quality
+                                              summary; 0 violations unlocks publish
+  POST /api/edit/{job_id}/publish         -> marks the job's timetable published;
+                                              409 unless the last whole-file validate
+                                              was clean and no edits landed since
 
 Use ?fill=true on upload to fill missing required datasets from the repo's base SIH
 dataset (demo convenience); without it, missing datasets stay missing and the solve
@@ -39,6 +68,8 @@ import uuid
 import csv
 import json
 import os
+import threading
+import time as _time
 
 BASE = pathlib.Path(__file__).resolve().parent.parent
 UPLOAD_ROOT = BASE / "uploads"
@@ -48,6 +79,19 @@ TIMETABLE_ROOT.mkdir(exist_ok=True)
 
 app = FastAPI(title="SIH Timetable Generator", version="1.0")
 jobs: dict = {}  # in-memory solve status; persisted per-job to status.json as well
+
+# Manual-edit machinery (see /api/edit/* below) reads-then-rewrites a job's
+# generated_timetable.csv per request -- one lock per job_id guards against
+# two concurrent edits on the same job racing each other.
+_edit_locks: dict = {}
+_edit_locks_guard = threading.Lock()
+
+
+def _edit_lock(job_id: str) -> threading.Lock:
+    with _edit_locks_guard:
+        if job_id not in _edit_locks:
+            _edit_locks[job_id] = threading.Lock()
+        return _edit_locks[job_id]
 
 
 # ---------------------------------------------------------------------------
@@ -107,6 +151,62 @@ def _count_rows(csv_path: pathlib.Path) -> int:
         return 0
 
 
+def _write_class_grids(job_dir: pathlib.Path, rows: list, time_slots: list, courses: dict) -> None:
+    """Bake per-section class_timetables/{section}.csv grids from an
+    already-materialized timetable row list (the same shape
+    generated_timetable.csv has). Extracted out of _write_timetable_and_grids
+    so both a fresh solver readout AND a manual-edit's mutated row list can
+    produce grids through the exact same code -- no drift between
+    solver-generated and admin-edited grids. `rows` with slot_id UNASSIGNED
+    are treated as unplaced (left as "—"), same as before."""
+    days = ["MON", "TUE", "WED", "THU", "FRI"]
+    period_order = [1, 2, 3, 4, 5, 6, 7]
+    period_headers = ["09:00-10:00", "10:00-11:00", "11:00-12:00", "12:00-13:00", "14:00-15:00", "15:00-16:00", "16:00-17:00"]
+    from datetime import datetime as _dt
+
+    def parse(t):
+        return _dt.strptime(t.strip(), "%H:%M")
+
+    by_day: dict = {}
+    for s in time_slots:
+        by_day.setdefault(s["day"], []).append(s)
+    slot_next: dict = {}
+    for day, lst in by_day.items():
+        lst_sorted = sorted(lst, key=lambda x: parse(x["start_time"]))
+        for i in range(len(lst_sorted) - 1):
+            if parse(lst_sorted[i]["end_time"]) == parse(lst_sorted[i + 1]["start_time"]):
+                slot_next[lst_sorted[i]["slot_id"]] = lst_sorted[i + 1]["slot_id"]
+    sections = sorted(set(r["section_id"] for r in rows))
+    class_dir = job_dir / "class_timetables"
+    class_dir.mkdir(exist_ok=True)
+    for sec in sections:
+        grid = {d: {p: "—" for p in period_order} for d in days}
+        for row in rows:
+            if row["section_id"] != sec:
+                continue
+            if row["slot_id"] == "UNASSIGNED":
+                continue
+            sl = next((s for s in time_slots if s["slot_id"] == row["slot_id"]), None)
+            if not sl:
+                continue
+            d = sl["day"]
+            p = int(sl["period_number"])
+            ccode = courses.get(row["course_id"], {}).get("course_code", row["course_id"])
+            entry = f"{ccode} {row['room_id']} {row['faculty_id']}"
+            grid[d][p] = entry
+            dur = int(courses.get(row["course_id"], {}).get("session_duration", "1") or 1)
+            if dur == 2 and row["slot_id"] in slot_next:
+                nxt = slot_next[row["slot_id"]]
+                sl2 = next((s for s in time_slots if s["slot_id"] == nxt), None)
+                if sl2:
+                    grid[sl2["day"]][int(sl2["period_number"])] = entry
+        with open(class_dir / f"{sec}.csv", "w", newline="", encoding="utf-8") as f:
+            w = csv.writer(f)
+            w.writerow(["Day/Period"] + period_headers)
+            for d in days:
+                w.writerow([d] + [grid[d][p] for p in period_order])
+
+
 def _write_timetable_and_grids(job_dir: pathlib.Path, solver, Start, Teacher, Room, meta, solved: bool) -> pathlib.Path:
     """Write generated_timetable.csv + per-section class_timetables/*.csv for
     a solved (solver, Start, Teacher, Room, meta) tuple. Shared by /api/solve
@@ -128,57 +228,11 @@ def _write_timetable_and_grids(job_dir: pathlib.Path, solver, Start, Teacher, Ro
                     w.writerow([oid, o["course_id"], o["section_id"], s + 1, slot_id, sl["day"], sl["start_time"], sl["end_time"], room_id, fac])
                 except Exception:
                     w.writerow([oid, o["course_id"], o["section_id"], s + 1, "UNASSIGNED", "?", "?", "?", "UNASSIGNED", fac])
-    # class-wise grids
-    days = ["MON", "TUE", "WED", "THU", "FRI"]
-    period_order = [1, 2, 3, 4, 5, 6, 7]
-    period_headers = ["09:00-10:00", "10:00-11:00", "11:00-12:00", "12:00-13:00", "14:00-15:00", "15:00-16:00", "16:00-17:00"]
-    time_slots = meta["data"]["time_slots.csv"]
-    courses = {r["course_id"]: r for r in meta["data"]["courses.csv"]}
-    from datetime import datetime as _dt
-
-    def parse(t):
-        return _dt.strptime(t.strip(), "%H:%M")
-
-    by_day: dict = {}
-    for s in time_slots:
-        by_day.setdefault(s["day"], []).append(s)
-    slot_next: dict = {}
-    for day, lst in by_day.items():
-        lst_sorted = sorted(lst, key=lambda x: parse(x["start_time"]))
-        for i in range(len(lst_sorted) - 1):
-            if parse(lst_sorted[i]["end_time"]) == parse(lst_sorted[i + 1]["start_time"]):
-                slot_next[lst_sorted[i]["slot_id"]] = lst_sorted[i + 1]["slot_id"]
-    sections = sorted(set(o["section_id"] for o in meta["offerings"]))
-    class_dir = job_dir / "class_timetables"
-    class_dir.mkdir(exist_ok=True)
     if solved:
-        timetable = list(csv.DictReader(open(out_csv, newline="", encoding="utf-8")))
-        for sec in sections:
-            grid = {d: {p: "—" for p in period_order} for d in days}
-            for row in timetable:
-                if row["section_id"] != sec:
-                    continue
-                if row["slot_id"] == "UNASSIGNED":
-                    continue
-                sl = next((s for s in time_slots if s["slot_id"] == row["slot_id"]), None)
-                if not sl:
-                    continue
-                d = sl["day"]
-                p = int(sl["period_number"])
-                ccode = courses.get(row["course_id"], {}).get("course_code", row["course_id"])
-                entry = f"{ccode} {row['room_id']} {row['faculty_id']}"
-                grid[d][p] = entry
-                dur = int(courses.get(row["course_id"], {}).get("session_duration", "1") or 1)
-                if dur == 2 and row["slot_id"] in slot_next:
-                    nxt = slot_next[row["slot_id"]]
-                    sl2 = next((s for s in time_slots if s["slot_id"] == nxt), None)
-                    if sl2:
-                        grid[sl2["day"]][int(sl2["period_number"])] = entry
-            with open(class_dir / f"{sec}.csv", "w", newline="", encoding="utf-8") as f:
-                w = csv.writer(f)
-                w.writerow(["Day/Period"] + period_headers)
-                for d in days:
-                    w.writerow([d] + [grid[d][p] for p in period_order])
+        time_slots = meta["data"]["time_slots.csv"]
+        courses = {r["course_id"]: r for r in meta["data"]["courses.csv"]}
+        rows = list(csv.DictReader(open(out_csv, newline="", encoding="utf-8")))
+        _write_class_grids(job_dir, rows, time_slots, courses)
     return out_csv
 
 
@@ -233,7 +287,13 @@ async def upload(request: Request, files: list[UploadFile] = File(...)):
     report = normalize_upload_folder(raw_dir, normalized_dir, fill_missing=fill)
 
     audit = {ds: _count_rows(normalized_dir / f"{ds}.csv") for ds in CANONICAL.keys()}
-    jobs[job_id] = {"status": "uploaded", "dir": str(job_dir), "report": report, "audit": audit}
+    jobs[job_id] = {
+        "status": "uploaded",
+        "dir": str(job_dir),
+        "report": report,
+        "audit": audit,
+        "created_at": _time.time(),
+    }
     _write_status(job_dir, jobs[job_id])
     return {"job_id": job_id, "report": report, "audit": audit, "next": f"/api/solve/{job_id}"}
 
@@ -273,12 +333,21 @@ async def solve(job_id: str, background_tasks: BackgroundTasks,
     # otherwise silently zero out the terms it didn't send.
     merged_weights = {**DEFAULT_WEIGHTS, **(weights or {})}
 
+    # Optional warm-start: if the upload included a prior/historical timetable
+    # (initial_schedule.csv), seed CP-SAT's search with it. Proven fix for
+    # datasets whose hard model is too large to solve cold within any
+    # reasonable budget (a real 555k-variable dataset came back UNKNOWN even
+    # at 300s cold, but OPTIMAL at 34.8s warm-started from this exact file).
+    initial_schedule_csv = normalized_dir / "initial_schedule.csv"
+    initial_hint_csv = str(initial_schedule_csv) if initial_schedule_csv.exists() else None
+
     def run_solve():
         try:
             from sih_solver.solve_pipeline import solve_hard_then_soft
 
             result = solve_hard_then_soft(str(normalized_dir), hard_time_limit=hard_time_limit,
-                                           soft_time_limit=soft_time_limit, weights=merged_weights)
+                                           soft_time_limit=soft_time_limit, weights=merged_weights,
+                                           initial_hint_csv=initial_hint_csv)
             solver, Start, Teacher, Room, meta = result["solver"], result["Start"], result["Teacher"], result["Room"], result["meta"]
             solved = result["status"] in _SOLVED_STATUSES
             out_csv = _write_timetable_and_grids(job_dir, solver, Start, Teacher, Room, meta, solved)
@@ -290,6 +359,7 @@ async def solve(job_id: str, background_tasks: BackgroundTasks,
                 "objective": result["objective"],
                 "warnings": check["warnings"],
                 "weights_used": merged_weights,
+                "warm_started": initial_hint_csv is not None,
                 "output": str(out_csv) if solved else None, "dir": str(job_dir),
             }
             jobs[job_id].update(payload)
@@ -303,7 +373,8 @@ async def solve(job_id: str, background_tasks: BackgroundTasks,
     background_tasks.add_task(run_solve)
     jobs[job_id] = {**jobs.get(job_id, {}), "status": "solving", "dir": str(job_dir)}
     _write_status(job_dir, jobs[job_id])
-    return {"job_id": job_id, "status": "solving", "poll": f"/api/status/{job_id}", "warnings": check["warnings"]}
+    return {"job_id": job_id, "status": "solving", "poll": f"/api/status/{job_id}", "warnings": check["warnings"],
+            "warm_started": initial_hint_csv is not None}
 
 
 # ---------------------------------------------------------------------------
@@ -472,6 +543,59 @@ async def optimize(job_id: str, background_tasks: BackgroundTasks,
     return {"job_id": job_id, "status": "optimizing", "poll": f"/api/status/{job_id}"}
 
 
+@app.get("/api/jobs")
+def list_jobs(limit: int = 5):
+    """Recent jobs across ALL uploads, newest first. Reads status.json off
+    disk (not the in-memory `jobs` dict) so this also works after a server
+    restart -- every job directory under uploads/ is already permanent, this
+    just exposes them instead of leaving the admin stuck on whichever job
+    happens to still be in browser localStorage."""
+    limit = max(1, min(limit, 50))
+    entries = []
+    for job_dir in UPLOAD_ROOT.iterdir():
+        if not job_dir.is_dir():
+            continue
+        state = _read_status(job_dir)
+        if state is None:
+            continue
+        created_at = state.get("created_at")
+        if created_at is None:
+            try:
+                created_at = job_dir.stat().st_ctime
+            except OSError:
+                created_at = 0
+        audit = state.get("audit") or {}
+        entries.append({
+            "job_id": job_dir.name,
+            "created_at": created_at,
+            "status": state.get("status"),
+            "publish_state": state.get("publish_state"),
+            "has_timetable": (job_dir / "generated_timetable.csv").exists(),
+            "sections": audit.get("sections"),
+            "faculty": audit.get("faculty"),
+            "rooms": audit.get("rooms"),
+            "courses": audit.get("courses"),
+        })
+    entries.sort(key=lambda e: e["created_at"], reverse=True)
+    return {"jobs": entries[:limit]}
+
+
+@app.delete("/api/jobs/{job_id}")
+def delete_job(job_id: str):
+    """Permanently removes a job's directory (raw uploads, normalized data,
+    generated timetable, edit history) -- lets the admin prune a job they no
+    longer want cluttering /history. Irreversible; the frontend confirms
+    before calling this."""
+    job_dir = UPLOAD_ROOT / job_id
+    if not job_dir.exists() or not job_dir.is_dir():
+        return JSONResponse({"error": "job not found"}, status_code=404)
+    shutil.rmtree(job_dir, ignore_errors=True)
+    jobs.pop(job_id, None)
+    with _edit_locks_guard:
+        _edit_locks.pop(job_id, None)
+    return {"job_id": job_id, "deleted": True}
+
+
 @app.get("/api/status/{job_id}")
 def status(job_id: str):
     j = jobs.get(job_id)
@@ -561,3 +685,286 @@ def report(job_id: str):
         time_slots_rows = list(csv.DictReader(f))
     stats = compute_stats(timetable_csv, time_slots_rows)
     return stats
+
+
+# ---------------------------------------------------------------------------
+# Admin manual timetable editing (sih_solver/manual_edit.py) — Dataset ->
+# CP-SAT generate -> Admin edit -> Re-validate -> Final timetable. Every
+# accept/reject decision routes through validate_output.validate() (via
+# manual_edit.check_edit), the same independent hard-constraint validator
+# the rest of the project already trusts — never a second rule set.
+# ---------------------------------------------------------------------------
+
+_EDIT_ROW_FIELDS = ["offering_id", "course_id", "section_id", "session", "slot_id",
+                     "day", "start_time", "end_time", "room_id", "faculty_id"]
+_EDIT_SNAPSHOT_FIELDS = ("slot_id", "room_id", "faculty_id", "day", "start_time", "end_time")
+
+
+def _require_solved_job(job_id: str):
+    job_dir = UPLOAD_ROOT / job_id
+    if not job_dir.exists():
+        return None, JSONResponse({"error": "job not found"}, status_code=404)
+    if not (job_dir / "generated_timetable.csv").exists():
+        return None, JSONResponse({"error": "no generated timetable for this job — call /api/solve first"}, status_code=409)
+    return job_dir, None
+
+
+def _current_job_state(job_id: str, job_dir: pathlib.Path) -> dict:
+    j = jobs.get(job_id)
+    if j:
+        return j
+    return _read_status(job_dir) or {}
+
+
+def _load_current_rows(job_dir: pathlib.Path) -> list:
+    with open(job_dir / "generated_timetable.csv", newline="", encoding="utf-8") as f:
+        return list(csv.DictReader(f))
+
+
+def _write_current_rows(job_dir: pathlib.Path, rows: list) -> None:
+    with open(job_dir / "generated_timetable.csv", "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=_EDIT_ROW_FIELDS)
+        w.writeheader()
+        for r in rows:
+            w.writerow({k: r.get(k, "") for k in _EDIT_ROW_FIELDS})
+
+
+def _edit_history_path(job_dir: pathlib.Path) -> pathlib.Path:
+    return job_dir / "edit_history.json"
+
+
+def _read_edit_history(job_dir: pathlib.Path) -> list:
+    p = _edit_history_path(job_dir)
+    if p.exists():
+        try:
+            return json.loads(p.read_text(encoding="utf-8"))
+        except Exception:
+            return []
+    return []
+
+
+def _write_edit_history(job_dir: pathlib.Path, history: list) -> None:
+    try:
+        with open(_edit_history_path(job_dir), "w", encoding="utf-8") as f:
+            json.dump(history, f, indent=2)
+    except Exception:
+        pass
+
+
+def _snapshot(row: dict | None) -> dict | None:
+    return {k: row.get(k) for k in _EDIT_SNAPSHOT_FIELDS} if row else None
+
+
+def _mark_draft(job_id: str, job_dir: pathlib.Path) -> None:
+    """Any edit or undo invalidates the last "Validate Final Timetable" run
+    and un-publishes -- a published artifact that no longer matches the
+    current edits shouldn't silently keep claiming to be published."""
+    jobs[job_id] = {**_current_job_state(job_id, job_dir), "publish_state": "draft", "last_validated_clean": False}
+    _write_status(job_dir, jobs[job_id])
+
+
+@app.post("/api/edit/{job_id}/check")
+def edit_check(job_id: str, edit: dict = Body(...)):
+    job_dir, err = _require_solved_job(job_id)
+    if err:
+        return err
+    from sih_solver import manual_edit as me
+    normalized_dir = job_dir / "normalized"
+    with _edit_lock(job_id):
+        rows = _load_current_rows(job_dir)
+        try:
+            ctx = me.load_edit_context(normalized_dir)
+            result = me.check_edit(normalized_dir, rows, edit, ctx=ctx)
+            delta = me.compute_soft_delta(normalized_dir, rows, result["candidate_rows"], edit, ctx=ctx)
+        except ValueError as e:
+            return JSONResponse({"error": str(e)}, status_code=400)
+    return {
+        "valid": result["valid"], "checks": result["checks"],
+        "new_violations": result["new_violations"],
+        "preexisting_violations": result["preexisting_violations"],
+        "warnings": result["warnings"],
+        "soft_delta": delta["items"], "weighted_delta": delta["weighted_delta"],
+    }
+
+
+@app.post("/api/edit/{job_id}/apply")
+def edit_apply(job_id: str, edit: dict = Body(...)):
+    job_dir, err = _require_solved_job(job_id)
+    if err:
+        return err
+    from sih_solver import manual_edit as me
+    normalized_dir = job_dir / "normalized"
+    with _edit_lock(job_id):
+        rows = _load_current_rows(job_dir)
+        try:
+            ctx = me.load_edit_context(normalized_dir)
+            # Always re-validate here, independent of any prior /check call
+            # — the client's earlier preview may be stale (another edit
+            # could have landed in between).
+            result = me.check_edit(normalized_dir, rows, edit, ctx=ctx)
+        except ValueError as e:
+            return JSONResponse({"error": str(e)}, status_code=400)
+        if not result["valid"]:
+            return JSONResponse({
+                "error": "Edit rejected — it would introduce a hard-constraint violation.",
+                "checks": result["checks"], "violations": result["new_violations"],
+            }, status_code=422)
+        candidate_rows = result["candidate_rows"]
+        delta = me.compute_soft_delta(normalized_dir, rows, candidate_rows, edit, ctx=ctx)
+        _write_current_rows(job_dir, candidate_rows)
+        _write_class_grids(job_dir, candidate_rows, ctx["time_slots"], ctx["courses"])
+
+        before_row = next((r for r in rows if r["offering_id"] == edit["offering_id"] and str(r["session"]) == str(edit["session"])), None)
+        after_row = next((r for r in candidate_rows if r["offering_id"] == edit["offering_id"] and str(r["session"]) == str(edit["session"])), None)
+        history = _read_edit_history(job_dir)
+        entry = {
+            "id": str(uuid.uuid4())[:8], "timestamp": _time.time(),
+            "kind": edit.get("kind", "move"),
+            "offering_id": edit["offering_id"], "session": edit["session"],
+            "before": _snapshot(before_row), "after": _snapshot(after_row),
+            "soft_delta": delta["items"], "weighted_delta": delta["weighted_delta"],
+        }
+        history.append(entry)
+        _write_edit_history(job_dir, history)
+        _mark_draft(job_id, job_dir)
+    return {"valid": True, "checks": result["checks"], "soft_delta": delta["items"],
+            "weighted_delta": delta["weighted_delta"], "entry": entry}
+
+
+@app.post("/api/edit/{job_id}/alternatives")
+def edit_alternatives(job_id: str, body: dict = Body(...)):
+    job_dir, err = _require_solved_job(job_id)
+    if err:
+        return err
+    from sih_solver import manual_edit as me
+    normalized_dir = job_dir / "normalized"
+    with _edit_lock(job_id):
+        rows = _load_current_rows(job_dir)
+    try:
+        results = me.find_alternative_slots(normalized_dir, rows, body["offering_id"], body["session"],
+                                             max_results=int(body.get("max_results", 5)))
+    except (ValueError, KeyError) as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    return {"alternatives": results}
+
+
+@app.post("/api/edit/{job_id}/room-alternatives")
+def edit_room_alternatives(job_id: str, body: dict = Body(...)):
+    job_dir, err = _require_solved_job(job_id)
+    if err:
+        return err
+    from sih_solver import manual_edit as me
+    normalized_dir = job_dir / "normalized"
+    with _edit_lock(job_id):
+        rows = _load_current_rows(job_dir)
+    try:
+        results = me.find_room_alternatives(normalized_dir, rows, body["offering_id"], body["session"])
+    except (ValueError, KeyError) as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    return {"rooms": results}
+
+
+@app.get("/api/edit/{job_id}/history")
+def edit_history(job_id: str):
+    job_dir, err = _require_solved_job(job_id)
+    if err:
+        return err
+    return {"history": _read_edit_history(job_dir)}
+
+
+@app.post("/api/edit/{job_id}/undo")
+def edit_undo(job_id: str):
+    job_dir, err = _require_solved_job(job_id)
+    if err:
+        return err
+    from sih_solver import manual_edit as me
+    normalized_dir = job_dir / "normalized"
+    with _edit_lock(job_id):
+        history = _read_edit_history(job_dir)
+        target = next((h for h in reversed(history) if h.get("kind") != "undo" and not h.get("undone")), None)
+        if target is None:
+            return JSONResponse({"error": "Nothing to undo."}, status_code=400)
+        before = target.get("before")
+        if not before:
+            return JSONResponse({"error": "Cannot undo — no prior state recorded for this edit."}, status_code=400)
+        rows = _load_current_rows(job_dir)
+        ctx = me.load_edit_context(normalized_dir)
+        undo_edit = {
+            "offering_id": target["offering_id"], "session": target["session"],
+            "new_slot_id": before.get("slot_id"), "new_room_id": before.get("room_id"),
+            "new_faculty_id": before.get("faculty_id"),
+        }
+        try:
+            # Undo is validated exactly like any other edit — not a
+            # privileged bypass — since something else may have changed
+            # since the edit being undone was applied.
+            result = me.check_edit(normalized_dir, rows, undo_edit, ctx=ctx)
+        except ValueError as e:
+            return JSONResponse({"error": str(e)}, status_code=400)
+        if not result["valid"]:
+            return JSONResponse({
+                "error": "Undo rejected — reverting would introduce a hard-constraint violation "
+                         "(something else likely changed since this edit was applied).",
+                "checks": result["checks"], "violations": result["new_violations"],
+            }, status_code=422)
+        candidate_rows = result["candidate_rows"]
+        delta = me.compute_soft_delta(normalized_dir, rows, candidate_rows, undo_edit, ctx=ctx)
+        _write_current_rows(job_dir, candidate_rows)
+        _write_class_grids(job_dir, candidate_rows, ctx["time_slots"], ctx["courses"])
+        target["undone"] = True
+        entry = {
+            "id": str(uuid.uuid4())[:8], "timestamp": _time.time(), "kind": "undo",
+            "offering_id": target["offering_id"], "session": target["session"],
+            "before": target["after"], "after": target["before"],
+            "soft_delta": delta["items"], "weighted_delta": delta["weighted_delta"],
+            "undoes": target["id"],
+        }
+        history.append(entry)
+        _write_edit_history(job_dir, history)
+        _mark_draft(job_id, job_dir)
+    return {"valid": True, "entry": entry}
+
+
+@app.post("/api/edit/{job_id}/validate")
+def edit_validate_all(job_id: str):
+    """Whole-timetable re-validation (req. #12) — NOT scoped to one edit,
+    the honest complete picture after however many edits have landed since
+    generation. On 0 violations, unlocks /publish."""
+    job_dir, err = _require_solved_job(job_id)
+    if err:
+        return err
+    from sih_solver.validate_output import validate as validate_whole
+    from sih_solver.gap_stats import compute_stats
+    normalized_dir = job_dir / "normalized"
+    with _edit_lock(job_id):
+        result = validate_whole(job_dir / "generated_timetable.csv", normalized_dir)
+        clean = len(result["violations"]) == 0
+        stats = None
+        time_slots_csv = normalized_dir / "time_slots.csv"
+        if time_slots_csv.exists():
+            with open(time_slots_csv, newline="", encoding="utf-8") as f:
+                time_slots_rows = list(csv.DictReader(f))
+            stats = compute_stats(job_dir / "generated_timetable.csv", time_slots_rows)
+        jobs[job_id] = {**_current_job_state(job_id, job_dir), "last_validated_clean": clean}
+        _write_status(job_dir, jobs[job_id])
+    return {
+        "violations": result["violations"], "warnings": result["warnings"],
+        "sessions_checked": result["sessions_checked"], "clean": clean,
+        "soft_quality": stats,
+    }
+
+
+@app.post("/api/edit/{job_id}/publish")
+def edit_publish(job_id: str):
+    job_dir, err = _require_solved_job(job_id)
+    if err:
+        return err
+    state = _current_job_state(job_id, job_dir)
+    if not state.get("last_validated_clean"):
+        return JSONResponse(
+            {"error": "Cannot publish — run \"Validate Final Timetable\" first and resolve any violations."},
+            status_code=409,
+        )
+    jobs[job_id] = {**state, "publish_state": "published"}
+    _write_status(job_dir, jobs[job_id])
+    return {"publish_state": "published"}

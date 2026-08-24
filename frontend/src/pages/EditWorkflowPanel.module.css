@@ -1,0 +1,68 @@
+.sectionTitle {
+  font-size: 15px;
+  margin: 28px 0 12px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.headerHint {
+  font-size: 12.5px;
+  color: var(--ink-muted);
+}
+
+.hint {
+  font-size: 12.5px;
+  color: var(--ink-muted);
+  margin: 0 0 14px;
+}
+
+.historyScroller {
+  overflow-x: auto;
+  margin-bottom: 14px;
+}
+
+.historyTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.historyTable th,
+.historyTable td {
+  border-bottom: 1px solid var(--border);
+  padding: 9px 12px;
+  text-align: left;
+}
+
+.historyTable th {
+  color: var(--ink-muted);
+  font-size: 10.5px;
+  text-transform: uppercase;
+}
+
+.undoneRow {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+
+.arrow {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.actionsRow {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.softSummary {
+  font-size: 12.5px;
+  color: var(--ink-muted);
+  margin-top: -4px;
+}

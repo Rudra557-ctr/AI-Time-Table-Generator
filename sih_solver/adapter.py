@@ -29,6 +29,10 @@ CANONICAL = {
     "programs": ["program_id","program_code","program_name","department_id","degree","duration_years"],
     "universities": ["university_id","university_name","campus","academic_year"],
     "academic_rules": ["rule_id","rule_name","rule_type","value","active"],
+    # Optional -- not in `required` below, so absence is silent. When present:
+    "initial_schedule": ["offering_id","course_id","section_id","session","slot_id","day","start_time","end_time","room_id","faculty_id"],
+    "section_conflicts": ["section_id_a","section_id_b","reason"],
+    "parallel_offerings": ["offering_id_a","offering_id_b","reason"],
 }
 
 # Aliases for fuzzy matching (lowercase, no spaces/underscores)

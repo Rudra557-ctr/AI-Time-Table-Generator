@@ -84,6 +84,10 @@ export interface StatusResponse {
   lns_starting_objective?: number
   lns_seconds?: number
 
+  // manual-edit workflow fields (set by /api/edit/*)
+  publish_state?: 'draft' | 'published'
+  last_validated_clean?: boolean
+
   // error fields
   trace?: string
 }
@@ -131,4 +135,119 @@ export interface TimetableRow {
   end_time: string
   room_id: string
   faculty_id: string
+}
+
+// --- Admin manual timetable editing (sih_solver/manual_edit.py) ---------
+
+export interface EditProposal {
+  offering_id: string
+  session: string
+  new_slot_id?: string
+  new_room_id?: string
+  new_faculty_id?: string
+}
+
+export interface EditCheckItem {
+  label: string
+  ok: boolean
+}
+
+export interface SoftDeltaItem {
+  before: number
+  after: number
+  delta: number
+}
+
+export interface SoftDelta {
+  section_gaps: SoftDeltaItem
+  section_isolated: SoftDeltaItem
+  faculty_gaps: SoftDeltaItem
+  faculty_isolated: SoftDeltaItem
+  room_wastage: SoftDeltaItem
+}
+
+export interface EditCheckResponse {
+  valid: boolean
+  checks: EditCheckItem[]
+  new_violations: string[]
+  preexisting_violations: string[]
+  warnings: string[]
+  soft_delta: SoftDelta
+  weighted_delta: number
+}
+
+export interface EditSnapshot {
+  slot_id: string
+  room_id: string
+  faculty_id: string
+  day: string
+  start_time: string
+  end_time: string
+}
+
+export interface EditHistoryEntry {
+  id: string
+  timestamp: number
+  kind: string
+  offering_id: string
+  session: string
+  before: EditSnapshot | null
+  after: EditSnapshot | null
+  soft_delta: SoftDelta
+  weighted_delta: number
+  undoes?: string
+  undone?: boolean
+}
+
+export interface EditApplyResponse {
+  valid: boolean
+  checks: EditCheckItem[]
+  soft_delta: SoftDelta
+  weighted_delta: number
+  entry: EditHistoryEntry
+}
+
+export interface AlternativeSlot {
+  slot_id: string
+  day: string
+  start_time: string
+  room_id: string
+  valid: boolean
+  soft_delta: SoftDelta
+  weighted_delta: number
+}
+
+export interface RoomAlternative {
+  room_id: string
+  capacity: number
+  valid: boolean
+  reason: string | null
+}
+
+export interface ValidateAllResponse {
+  violations: string[]
+  warnings: string[]
+  sessions_checked: number
+  clean: boolean
+  soft_quality: ReportResponse | null
+}
+
+export type PublishState = 'draft' | 'published'
+
+// --- Recent timetables (job history across all uploads) ------------------
+
+export interface JobSummary {
+  job_id: string
+  created_at: number
+  status: string | null
+  publish_state: PublishState | null
+  has_timetable: boolean
+  sections: number | null
+  faculty: number | null
+  rooms: number | null
+  courses: number | null
+}
+
+export interface JobListResponse {
+  jobs: JobSummary[]
 }
