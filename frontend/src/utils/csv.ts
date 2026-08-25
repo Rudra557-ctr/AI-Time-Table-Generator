@@ -77,7 +77,56 @@ export function todayDayCode(): string {
 
 export interface ClassGrid {
   periodHeaders: string[]
+  /** Parallel to periodHeaders — true for a synthetic lunch column inserted
+   * where the backend's fixed period list has a time gap (see below). */
+  isLunchColumn: boolean[]
   rows: { day: string; cells: string[] }[]
+}
+
+const LUNCH_LABEL = 'Lunch Break'
+
+/** backend/app.py:_write_class_grids bakes a FIXED period-header list —
+ * "09:00-10:00", ..., "12:00-13:00", "14:00-15:00", ... — with no column at
+ * all for the 13:00-14:00 gap between them. Left as-is, the grid just jumps
+ * straight from 12:00-13:00 to 14:00-15:00 with nothing marking why. This
+ * scans consecutive "HH:MM-HH:MM" headers for exactly that kind of gap and
+ * inserts a synthetic "Lunch Break" column so the break is shown explicitly
+ * instead of silently disappearing. */
+function parseHm(t: string): number | null {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(t.trim())
+  if (!m) return null
+  return Number(m[1]) * 60 + Number(m[2])
+}
+
+function withLunchColumns(periodHeaders: string[], rows: { day: string; cells: string[] }[]): ClassGrid {
+  const outHeaders: string[] = []
+  const isLunchColumn: boolean[] = []
+  let gapsFound = 0
+  for (let i = 0; i < periodHeaders.length; i++) {
+    outHeaders.push(periodHeaders[i])
+    isLunchColumn.push(false)
+    if (i < periodHeaders.length - 1) {
+      const endStr = periodHeaders[i].split('-')[1] || ''
+      const nextStartStr = periodHeaders[i + 1].split('-')[0] || ''
+      const end = parseHm(endStr)
+      const nextStart = parseHm(nextStartStr)
+      if (end !== null && nextStart !== null && end !== nextStart) {
+        outHeaders.push(`${endStr.trim()}-${nextStartStr.trim()}`)
+        isLunchColumn.push(true)
+        gapsFound++
+      }
+    }
+  }
+  if (gapsFound === 0) return { periodHeaders, isLunchColumn: periodHeaders.map(() => false), rows }
+  const outRows = rows.map((r) => {
+    const cells: string[] = []
+    let src = 0
+    for (const isLunch of isLunchColumn) {
+      cells.push(isLunch ? LUNCH_LABEL : r.cells[src++])
+    }
+    return { day: r.day, cells }
+  })
+  return { periodHeaders: outHeaders, isLunchColumn, rows: outRows }
 }
 
 /** Parses a class_timetables/{section}.csv (header: "Day/Period" + period
@@ -91,5 +140,5 @@ export function parseClassGridCsv(csvText: string): ClassGrid {
   const rows = rest
     .filter((r) => r && r.length > 0)
     .map((r) => ({ day: r[0], cells: r.slice(1) }))
-  return { periodHeaders, rows }
+  return withLunchColumns(periodHeaders, rows)
 }

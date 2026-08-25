@@ -16,8 +16,8 @@ export function ScheduleGrid({
         <thead>
           <tr>
             <th className={styles.dayHead}>Day</th>
-            {grid.periodHeaders.map((h) => (
-              <th key={h} className="mono">
+            {grid.periodHeaders.map((h, i) => (
+              <th key={h} className={`mono ${grid.isLunchColumn[i] ? styles.lunchHead : ''}`}>
                 {h}
               </th>
             ))}
@@ -28,12 +28,13 @@ export function ScheduleGrid({
             <tr key={row.day} className={ri % 2 === 1 ? styles.rowAlt : ''}>
               <td className={styles.dayCell}>{row.day}</td>
               {row.cells.map((cell, i) => {
-                const changedHere = cell !== '—' && isCellChanged?.(cell)
-                const clickable = Boolean(onCellClick) && cell !== '—'
+                const isLunch = grid.isLunchColumn[i]
+                const changedHere = !isLunch && cell !== '—' && isCellChanged?.(cell)
+                const clickable = !isLunch && Boolean(onCellClick) && cell !== '—'
                 return (
                   <td
                     key={i}
-                    className={`${styles.slotCell} mono ${cell === '—' ? styles.empty : ''} ${changedHere ? styles.changedCell : ''} ${clickable ? styles.clickable : ''}`}
+                    className={`${styles.slotCell} mono ${cell === '—' ? styles.empty : ''} ${changedHere ? styles.changedCell : ''} ${clickable ? styles.clickable : ''} ${isLunch ? styles.lunchCell : ''}`}
                     onClick={clickable ? () => onCellClick?.(row.day, grid.periodHeaders[i]) : undefined}
                     role={clickable ? 'button' : undefined}
                     tabIndex={clickable ? 0 : undefined}

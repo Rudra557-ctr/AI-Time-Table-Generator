@@ -26,6 +26,8 @@
                                         generated timetable, not just the most recent one
   DELETE /api/jobs/{job_id}         -> permanently deletes a job's directory (uploads,
                                         normalized data, generated timetable, edit history)
+  PATCH  /api/jobs/{job_id}         -> {"name": "..."} sets a custom display name shown
+                                        in /history instead of "Timetable N"/the raw job_id
   GET  /api/status/{job_id}
   GET  /api/download/{job_id}, /api/download_class/{job_id}/{section}
   GET  /api/weights/defaults        -> soft.DEFAULT_WEIGHTS, so the frontend never hardcodes them separately
@@ -149,6 +151,22 @@ def _count_rows(csv_path: pathlib.Path) -> int:
             return sum(1 for _ in csv.DictReader(f))
     except FileNotFoundError:
         return 0
+
+
+def _next_job_sequence() -> int:
+    """1-based creation order ("Timetable 1", "Timetable 2", ...), derived
+    from disk (max existing sequence + 1) rather than an in-memory counter
+    so it survives a server restart and never collides. Deliberately never
+    reused/renumbered when an earlier job is deleted -- it's a permanent
+    "this was the Nth dataset generated" label, not a live position index."""
+    best = 0
+    for d in UPLOAD_ROOT.iterdir():
+        if not d.is_dir():
+            continue
+        state = _read_status(d)
+        if state and isinstance(state.get("sequence"), int):
+            best = max(best, state["sequence"])
+    return best + 1
 
 
 def _write_class_grids(job_dir: pathlib.Path, rows: list, time_slots: list, courses: dict) -> None:
@@ -293,6 +311,7 @@ async def upload(request: Request, files: list[UploadFile] = File(...)):
         "report": report,
         "audit": audit,
         "created_at": _time.time(),
+        "sequence": _next_job_sequence(),
     }
     _write_status(job_dir, jobs[job_id])
     return {"job_id": job_id, "report": report, "audit": audit, "next": f"/api/solve/{job_id}"}
@@ -568,6 +587,8 @@ def list_jobs(limit: int = 5):
         entries.append({
             "job_id": job_dir.name,
             "created_at": created_at,
+            "sequence": state.get("sequence"),
+            "name": state.get("name"),
             "status": state.get("status"),
             "publish_state": state.get("publish_state"),
             "has_timetable": (job_dir / "generated_timetable.csv").exists(),
@@ -594,6 +615,22 @@ def delete_job(job_id: str):
     with _edit_locks_guard:
         _edit_locks.pop(job_id, None)
     return {"job_id": job_id, "deleted": True}
+
+
+@app.patch("/api/jobs/{job_id}")
+def rename_job(job_id: str, body: dict = Body(...)):
+    """Sets a custom display name for a job (shown in /history instead of
+    "Timetable N"/the raw job_id) -- purely a label, doesn't touch anything
+    solver- or dataset-related. Pass {"name": "..."} ; an empty/whitespace
+    name clears the custom name back to the default Timetable-N display."""
+    job_dir = UPLOAD_ROOT / job_id
+    if not job_dir.exists() or not job_dir.is_dir():
+        return JSONResponse({"error": "job not found"}, status_code=404)
+    name = (body.get("name") or "").strip()[:60]
+    state = _current_job_state(job_id, job_dir)
+    jobs[job_id] = {**state, "name": name or None}
+    _write_status(job_dir, jobs[job_id])
+    return {"job_id": job_id, "name": name or None}
 
 
 @app.get("/api/status/{job_id}")

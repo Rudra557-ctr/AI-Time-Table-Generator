@@ -53,7 +53,10 @@ function buildOccupancyGrid(rows: TimetableRow[], key: 'faculty_id' | 'room_id',
     }),
   }))
 
-  return { periodHeaders, rows: rowsOut }
+  // Built directly from this entity's own scheduled rows, not run through
+  // parseClassGridCsv, so there's no fixed period list to find a lunch gap
+  // in -- no lunch column here.
+  return { periodHeaders, isLunchColumn: periodHeaders.map(() => false), rows: rowsOut }
 }
 
 function useOccupancy(jobId: string | null, hasSolved: boolean) {

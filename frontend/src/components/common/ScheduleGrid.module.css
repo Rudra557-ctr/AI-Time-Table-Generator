@@ -73,3 +73,14 @@
   outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
+
+.lunchHead {
+  opacity: 0.75;
+}
+
+.lunchCell {
+  background: var(--bg-tint) !important;
+  color: var(--ink-muted);
+  font-style: italic;
+  letter-spacing: 0.02em;
+}

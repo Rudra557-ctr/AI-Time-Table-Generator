@@ -82,6 +82,13 @@ export function deleteJob(jobId: string): Promise<{ job_id: string; deleted: boo
   return apiFetch<{ job_id: string; deleted: boolean }>(`/api/jobs/${jobId}`, { method: 'DELETE' })
 }
 
+export function renameJob(jobId: string, name: string): Promise<{ job_id: string; name: string | null }> {
+  return apiFetch<{ job_id: string; name: string | null }>(`/api/jobs/${jobId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ name }),
+  })
+}
+
 // Plain paths, not full download triggers — the X-API-Key header (when set)
 // can't ride along on a bare <a href> navigation, so actual downloads go
 // through utils/download.ts's downloadWithAuth() instead, which fetches

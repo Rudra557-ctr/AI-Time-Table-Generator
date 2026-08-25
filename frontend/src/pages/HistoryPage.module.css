@@ -24,10 +24,16 @@
   margin-bottom: 8px;
 }
 
-.jobId {
-  font-size: 13px;
+.jobLabel {
+  font-size: 15px;
   font-weight: 700;
   color: var(--ink);
+}
+
+.jobId {
+  font-size: 11px;
+  color: var(--ink-faint);
+  margin-bottom: 10px;
 }
 
 .headActions {
@@ -64,6 +70,78 @@
 .deleteIconBtn:hover {
   background: var(--error-soft);
   color: var(--error);
+}
+
+.editIconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--ink-faint);
+  cursor: pointer;
+  flex: none;
+}
+
+.editIconBtn:hover {
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+}
+
+.renameRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.renameInput {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--bg-tint);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 5px 8px;
+}
+
+.renameSaveBtn,
+.renameCancelBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-sm);
+  border: none;
+  cursor: pointer;
+  flex: none;
+}
+
+.renameSaveBtn {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.renameSaveBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.renameCancelBtn {
+  background: var(--bg-card-muted);
+  color: var(--ink-muted);
+}
+
+.renameError {
+  font-size: 11.5px;
+  color: var(--error);
+  margin: -4px 0 8px;
 }
 
 .when {

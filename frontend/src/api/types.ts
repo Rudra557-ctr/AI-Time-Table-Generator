@@ -239,6 +239,8 @@ export type PublishState = 'draft' | 'published'
 export interface JobSummary {
   job_id: string
   created_at: number
+  sequence: number | null
+  name: string | null
   status: string | null
   publish_state: PublishState | null
   has_timetable: boolean
