@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: sih-timetable-usar
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /docs

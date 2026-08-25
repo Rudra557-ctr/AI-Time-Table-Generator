@@ -1,0 +1,30 @@
+# Runtime data — becomes a mounted volume in production, not baked into the image
+uploads/
+timetables_generated/
+class_timetables/
+generated_timetable*.csv
+
+# VCS / editor / OS
+.git/
+.vscode/
+.DS_Store
+
+# Frontend build artifacts / deps (rebuilt fresh in the Docker build stage)
+frontend/node_modules/
+frontend/dist/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+venv/
+.venv/
+
+# Unrelated nested repo and misc local scratch/sample files
+Automatic-TimeTable-Generation-For-An-Institute/
+usar_like_dataset/
+usar_like_dataset*.zip
+synthetic_data/
+scripts/
+*.zip
+output/

@@ -258,9 +258,10 @@ def _write_timetable_and_grids(job_dir: pathlib.Path, solver, Start, Teacher, Ro
 # Index
 # ---------------------------------------------------------------------------
 
-@app.get("/", response_class=HTMLResponse)
-def index():
-    return "<h1>SIH Timetable API running — see /docs</h1>"
+_FRONTEND_DIST = BASE / "frontend" / "dist"
+if (_FRONTEND_DIST / "assets").exists():
+    from fastapi.staticfiles import StaticFiles
+    app.mount("/assets", StaticFiles(directory=_FRONTEND_DIST / "assets"), name="frontend-assets")
 
 
 # ---------------------------------------------------------------------------
@@ -1005,3 +1006,27 @@ def edit_publish(job_id: str):
     jobs[job_id] = {**state, "publish_state": "published"}
     _write_status(job_dir, jobs[job_id])
     return {"publish_state": "published"}
+
+
+# ---------------------------------------------------------------------------
+# Frontend SPA fallback — MUST stay the last route registered. Every route
+# above (including FastAPI's own /docs, /openapi.json, /redoc) is matched
+# first; this only catches paths nothing else claimed, so a page refresh on
+# a client-side route like /history or /timetable still gets index.html
+# (React Router then takes over) instead of a 404.
+# ---------------------------------------------------------------------------
+
+@app.get("/{full_path:path}", response_class=HTMLResponse)
+def spa(full_path: str):
+    if full_path.startswith("api/"):
+        return JSONResponse({"error": "Not found"}, status_code=404)
+    # Root-level public/ files (favicon.svg, icons.svg, ...) land directly
+    # in dist/ alongside index.html, not under /assets/ -- serve them as
+    # actual files (not the SPA shell) when the path matches one.
+    candidate = (_FRONTEND_DIST / full_path).resolve()
+    if full_path and candidate.is_file() and _FRONTEND_DIST in candidate.parents:
+        return FileResponse(candidate)
+    index_path = _FRONTEND_DIST / "index.html"
+    if index_path.exists():
+        return index_path.read_text(encoding="utf-8")
+    return "<h1>SIH Timetable API running — see /docs</h1>"
