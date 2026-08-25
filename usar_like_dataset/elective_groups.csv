@@ -1,0 +1,11 @@
+elective_group_id,group_name,elective_type,year,program_scope,minimum_choices,maximum_choices,synchronized
+EG_OAE_V,Year V Open Area Electives,OAE,3,ALL,1,1,False
+EG_OAE_VII,Year VII Open Area Electives,OAE,4,ALL,1,1,False
+EG_PCEV_AIDS,AIDS Year V Professional Electives,PCE,3,AIDS,1,1,False
+EG_PCEVII_AIDS,AIDS Year VII Professional Electives,PCE,4,AIDS,1,1,False
+EG_PCEV_AIML,AIML Year V Professional Electives,PCE,3,AIML,1,1,False
+EG_PCEVII_AIML,AIML Year VII Professional Electives,PCE,4,AIML,1,1,False
+EG_PCEV_AR,AR Year V Professional Electives,PCE,3,AR,1,1,False
+EG_PCEVII_AR,AR Year VII Professional Electives,PCE,4,AR,1,1,False
+EG_PCEV_IIOT,IIOT Year V Professional Electives,PCE,3,IIOT,1,1,False
+EG_PCEVII_IIOT,IIOT Year VII Professional Electives,PCE,4,IIOT,1,1,False

@@ -30,7 +30,10 @@ def load_course_offerings(root: pathlib.Path = DATASET_ROOT_RAW, dedup: bool = T
     deduped = []
     dups = []
     for r in rows:
-        key = (r["course_id"], r["section_id"])
+        # Richer key — see preprocessing.py dedup comment: preserves intentional
+        # lab A/B parallel splits (different student_count) while still
+        # collapsing the 11 exact duplicates in the original SIH dataset.
+        key = (r["course_id"], r["section_id"], r.get("required_sessions"), r.get("session_duration"), r.get("student_count"))
         if key in seen:
             dups.append(r)
             continue
@@ -169,7 +172,7 @@ def quick_solvability_check(normalized_dir: pathlib.Path):
     seen = set()
     offerings_deduped = []
     for r in data["course_offerings.csv"]:
-        k = (r["course_id"], r["section_id"])
+        k = (r["course_id"], r["section_id"], r.get("required_sessions"), r.get("session_duration"), r.get("student_count"))
         if k in seen:
             continue
         seen.add(k)

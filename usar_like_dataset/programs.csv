@@ -1,0 +1,5 @@
+program_id,program_code,program_name,department_id,degree,duration_years
+P_AIDS,AIDS,AI & Data Science,D_AIDS,BTech,4
+P_AIML,AIML,AI & Machine Learning,D_AIML,BTech,4
+P_AR,AR,Robotics,D_AR,BTech,4
+P_IIOT,IIOT,Industrial IoT,D_IIOT,BTech,4

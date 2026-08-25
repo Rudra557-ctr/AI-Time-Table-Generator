@@ -70,7 +70,7 @@ def load_edit_context(root):
     student_enrollments = _read_optional(root / "student_enrollments.csv")
     seen, offerings_deduped = set(), []
     for o in offerings_raw:
-        k = (o["course_id"], o["section_id"])
+        k = (o["course_id"], o["section_id"], o.get("required_sessions"), o.get("session_duration"), o.get("student_count"))
         if k in seen:
             continue
         seen.add(k)

@@ -1,0 +1,145 @@
+faculty_id,name,department_id,designation,employment_type,max_hours_per_week,max_hours_per_day,min_hours_per_week
+F0001,Dr. Riya Pillai,D_COMMON,Professor,VISITING,18,5,12
+F0002,Dr. Bhanu Prakash Chatterjee,D_COMMON,Assistant Professor,PERMANENT,20,5,10
+F0003,Dr. Navdeep Iyer,D_COMMON,Assistant Professor,PERMANENT,16,5,8
+F0004,Dr. Ankur Sharma,D_COMMON,Associate Professor,PERMANENT,20,5,10
+F0005,Dr. Pawan Kumar Singh,D_COMMON,Professor,PERMANENT,18,5,12
+F0006,Dr. Sanjay Bose,D_COMMON,Professor,PERMANENT,20,5,12
+F0007,Dr. Jyoti Pillai,D_COMMON,Assistant Professor,PERMANENT,20,5,10
+F0008,Dr. Kriti Pillai,D_COMMON,Professor,PERMANENT,20,5,12
+F0009,Dr. Ruchika Shah,D_COMMON,Assistant Professor,VISITING,16,5,10
+F0010,Dr. Pushp Kumar Gupta,D_COMMON,Associate Professor,PERMANENT,18,5,8
+F0011,Dr. Navdeep Shah,D_COMMON,Associate Professor,VISITING,18,5,10
+F0012,Dr. Manoj Chatterjee,D_COMMON,Professor,VISITING,16,5,8
+F0013,Dr. Anirban Menon,D_COMMON,Professor,VISITING,16,5,8
+F0014,Dr. Mahesh Pillai,D_COMMON,Professor,PERMANENT,20,5,12
+F0015,Dr. Manisha Verma,D_COMMON,Professor,PERMANENT,20,5,8
+F0016,Dr. Rajavel Shah,D_COMMON,Assistant Professor,PERMANENT,16,5,10
+F0017,Dr. Atul Desai,D_COMMON,Professor,VISITING,16,5,12
+F0018,Dr. Subhash Chatterjee,D_COMMON,Associate Professor,PERMANENT,20,5,8
+F0019,Dr. Sheetal Chawla,D_COMMON,Assistant Professor,PERMANENT,18,5,8
+F0020,Dr. Arti Malhotra,D_COMMON,Associate Professor,VISITING,16,5,12
+F0021,Dr. Ashish Sharma,D_AIDS,Assistant Professor,PERMANENT,16,5,12
+F0022,Dr. Manisha Nair,D_AIDS,Associate Professor,VISITING,18,5,12
+F0023,Dr. Sakshi Bose,D_AIDS,Assistant Professor,PERMANENT,20,5,8
+F0024,Dr. Pushp Kumar Sharma,D_AIDS,Associate Professor,PERMANENT,18,5,12
+F0025,Dr. Reena Desai,D_AIDS,Associate Professor,PERMANENT,20,5,10
+F0026,Dr. Manoj Malhotra,D_AIDS,Assistant Professor,VISITING,18,5,8
+F0027,Dr. Anirban Kapoor,D_AIDS,Professor,VISITING,18,5,12
+F0028,Dr. Manisha Sharma,D_AIDS,Assistant Professor,PERMANENT,20,5,8
+F0029,Dr. Kriti Singh,D_AIDS,Assistant Professor,VISITING,20,5,8
+F0030,Dr. Reena Reddy,D_AIDS,Associate Professor,PERMANENT,18,5,10
+F0031,Dr. Navdeep Malhotra,D_AIDS,Assistant Professor,PERMANENT,18,5,8
+F0032,Dr. Kanika Iyer,D_AIDS,Professor,PERMANENT,18,5,10
+F0033,Dr. Ravi Verma,D_AIDS,Associate Professor,PERMANENT,16,5,10
+F0034,Dr. Abha Pillai,D_AIDS,Associate Professor,VISITING,20,5,10
+F0035,Dr. Arvind Malhotra,D_AIDS,Assistant Professor,VISITING,20,5,8
+F0036,Dr. Renu Singh,D_AIDS,Professor,PERMANENT,20,5,8
+F0037,Dr. Kriti Rao,D_COMMON,Assistant Professor,PERMANENT,16,5,8
+F0038,Dr. Geetanshi Menon,D_COMMON,Associate Professor,PERMANENT,20,5,10
+F0039,Dr. Neeraj Malhotra,D_COMMON,Associate Professor,PERMANENT,20,5,8
+F0040,Dr. Sushobhan Sharma,D_COMMON,Professor,PERMANENT,16,5,12
+F0041,Dr. Kriti Chawla,D_COMMON,Professor,PERMANENT,16,5,10
+F0042,Dr. Jyoti Verma,D_COMMON,Professor,PERMANENT,20,5,12
+F0043,Dr. Jyoti Gupta,D_COMMON,Associate Professor,PERMANENT,20,5,8
+F0044,Dr. Pooja Chatterjee,D_COMMON,Assistant Professor,PERMANENT,16,5,8
+F0045,Dr. Geetanshi Desai,D_COMMON,Professor,PERMANENT,20,5,8
+F0046,Dr. Shashi Chawla,D_COMMON,Assistant Professor,PERMANENT,20,5,10
+F0047,Dr. Ravi Shah,D_COMMON,Professor,PERMANENT,18,5,8
+F0048,Dr. Pratibha Iyer,D_COMMON,Professor,PERMANENT,18,5,10
+F0049,Dr. Kanika Chawla,D_COMMON,Associate Professor,PERMANENT,18,5,12
+F0050,Dr. Shashi Chatterjee,D_COMMON,Professor,VISITING,18,5,12
+F0051,Dr. Ravi Iyer,D_COMMON,Professor,PERMANENT,20,5,8
+F0052,Dr. Navdeep Rao,D_COMMON,Assistant Professor,PERMANENT,16,5,10
+F0053,Dr. Bindoo Verma,D_COMMON,Professor,PERMANENT,18,5,10
+F0054,Dr. Manoj Iyer,D_COMMON,Professor,PERMANENT,16,5,12
+F0055,Dr. Ruchika Verma,D_COMMON,Assistant Professor,VISITING,20,5,10
+F0056,Dr. Ravi Gupta,D_COMMON,Professor,PERMANENT,20,5,12
+F0057,Dr. Khyati Menon,D_AIML,Associate Professor,VISITING,16,5,8
+F0058,Dr. Sowmya Verma,D_AIML,Professor,PERMANENT,16,5,8
+F0059,Dr. Ankur Bose,D_AIML,Assistant Professor,PERMANENT,18,5,12
+F0060,Dr. Anirban Gupta,D_AIML,Professor,PERMANENT,16,5,12
+F0061,Dr. Himani Pillai,D_AIML,Associate Professor,PERMANENT,16,5,12
+F0062,Dr. Ritu Shah,D_AIML,Assistant Professor,PERMANENT,20,5,8
+F0063,Dr. Arti Pillai,D_AIML,Assistant Professor,PERMANENT,16,5,12
+F0064,Dr. Khyati Singh,D_AIML,Assistant Professor,PERMANENT,18,5,8
+F0065,Dr. Geetanshi Chatterjee,D_AIML,Professor,PERMANENT,20,5,12
+F0066,Dr. Himani Desai,D_AIML,Professor,PERMANENT,16,5,10
+F0067,Dr. Pushp Kumar Iyer,D_AIML,Professor,PERMANENT,20,5,12
+F0068,Dr. Jyoti Kapoor,D_AIML,Associate Professor,PERMANENT,18,5,10
+F0069,Dr. Bindoo Pillai,D_AIML,Associate Professor,PERMANENT,16,5,8
+F0070,Dr. Renu Pillai,D_AIML,Associate Professor,PERMANENT,18,5,10
+F0071,Dr. Khyati Chatterjee,D_AIML,Professor,PERMANENT,20,5,10
+F0072,Dr. Pushp Kumar Shah,D_AIML,Professor,PERMANENT,16,5,8
+F0073,Dr. Ritu Reddy,D_COMMON,Professor,VISITING,18,5,12
+F0074,Dr. Pawan Kumar Reddy,D_COMMON,Professor,VISITING,16,5,10
+F0075,Dr. Ravi Sharma,D_COMMON,Associate Professor,PERMANENT,18,5,10
+F0076,Dr. Ritu Kapoor,D_COMMON,Associate Professor,VISITING,20,5,10
+F0077,Dr. Ruchika Bose,D_COMMON,Professor,PERMANENT,20,5,12
+F0078,Dr. Subhash Singh,D_COMMON,Associate Professor,VISITING,18,5,8
+F0079,Dr. Ankur Malhotra,D_COMMON,Assistant Professor,PERMANENT,20,5,12
+F0080,Dr. Bindoo Kapoor,D_COMMON,Professor,PERMANENT,20,5,8
+F0081,Dr. Rajendra Kapoor,D_COMMON,Assistant Professor,PERMANENT,16,5,10
+F0082,Dr. Abha Desai,D_COMMON,Assistant Professor,PERMANENT,16,5,10
+F0083,Dr. Sakshi Nair,D_COMMON,Assistant Professor,PERMANENT,18,5,10
+F0084,Dr. Jyoti Malhotra,D_COMMON,Assistant Professor,VISITING,20,5,10
+F0085,Dr. Riya Chawla,D_COMMON,Associate Professor,PERMANENT,16,5,8
+F0086,Dr. Priyanka Reddy,D_COMMON,Professor,PERMANENT,16,5,12
+F0087,Dr. Deepak Singh,D_COMMON,Assistant Professor,PERMANENT,16,5,12
+F0088,Dr. Mahesh Desai,D_COMMON,Professor,PERMANENT,16,5,8
+F0089,Dr. Pooja Singh,D_COMMON,Professor,VISITING,16,5,10
+F0090,Dr. Rajendra Iyer,D_COMMON,Associate Professor,PERMANENT,20,5,12
+F0091,Dr. Rahul Desai,D_COMMON,Professor,PERMANENT,16,5,12
+F0092,Dr. Rahul Nair,D_COMMON,Professor,PERMANENT,18,5,12
+F0093,Dr. Sheetal Pillai,D_AR,Associate Professor,PERMANENT,16,5,8
+F0094,Dr. Chetana Reddy,D_AR,Professor,PERMANENT,18,5,8
+F0095,Dr. Rohit Malhotra,D_AR,Associate Professor,VISITING,18,5,12
+F0096,Dr. Manoj Gupta,D_AR,Assistant Professor,VISITING,16,5,10
+F0097,Dr. Sourabh Singh,D_AR,Associate Professor,PERMANENT,18,5,8
+F0098,Dr. Khyati Sharma,D_AR,Associate Professor,PERMANENT,18,5,12
+F0099,Dr. Ghanendra Singh,D_AR,Assistant Professor,PERMANENT,18,5,12
+F0100,Dr. Ghanendra Pillai,D_AR,Associate Professor,VISITING,16,5,8
+F0101,Dr. Subhash Bose,D_AR,Assistant Professor,PERMANENT,20,5,12
+F0102,Dr. Arvind Sharma,D_AR,Associate Professor,PERMANENT,18,5,10
+F0103,Dr. Mahesh Bose,D_AR,Professor,PERMANENT,18,5,12
+F0104,Dr. Bindoo Sharma,D_AR,Assistant Professor,PERMANENT,18,5,12
+F0105,Dr. Ritu Chatterjee,D_AR,Assistant Professor,PERMANENT,20,5,10
+F0106,Dr. Ankur Shah,D_AR,Assistant Professor,PERMANENT,16,5,10
+F0107,Dr. Pawan Kumar Menon,D_AR,Professor,PERMANENT,16,5,10
+F0108,Dr. Rohit Desai,D_AR,Assistant Professor,PERMANENT,18,5,12
+F0109,Dr. Atul Sharma,D_COMMON,Associate Professor,PERMANENT,18,5,12
+F0110,Dr. Geetanshi Kapoor,D_COMMON,Associate Professor,VISITING,20,5,12
+F0111,Dr. Pratibha Sharma,D_COMMON,Professor,PERMANENT,16,5,10
+F0112,Dr. Anupam Reddy,D_COMMON,Assistant Professor,VISITING,16,5,10
+F0113,Dr. Bhanu Prakash Singh,D_COMMON,Associate Professor,PERMANENT,18,5,8
+F0114,Dr. Shashi Kapoor,D_COMMON,Assistant Professor,PERMANENT,16,5,8
+F0115,Dr. Sowmya Pillai,D_COMMON,Assistant Professor,VISITING,20,5,8
+F0116,Dr. Neeta Reddy,D_COMMON,Associate Professor,PERMANENT,18,5,8
+F0117,Dr. Rahul Iyer,D_COMMON,Assistant Professor,VISITING,16,5,12
+F0118,Dr. Pawan Kumar Chawla,D_COMMON,Assistant Professor,PERMANENT,16,5,12
+F0119,Dr. Pratibha Singh,D_COMMON,Associate Professor,PERMANENT,16,5,10
+F0120,Dr. Khyati Nair,D_COMMON,Professor,VISITING,18,5,10
+F0121,Dr. Abha Verma,D_COMMON,Associate Professor,PERMANENT,18,5,10
+F0122,Dr. Sowmya Desai,D_COMMON,Associate Professor,PERMANENT,16,5,10
+F0123,Dr. Disha Menon,D_COMMON,Associate Professor,PERMANENT,16,5,12
+F0124,Dr. Priyanka Sharma,D_COMMON,Assistant Professor,PERMANENT,18,5,8
+F0125,Dr. Neeta Nair,D_COMMON,Associate Professor,VISITING,20,5,12
+F0126,Dr. Pushp Kumar Verma,D_COMMON,Associate Professor,PERMANENT,18,5,8
+F0127,Dr. Rohit Shah,D_COMMON,Professor,VISITING,18,5,12
+F0128,Dr. Kriti Kapoor,D_COMMON,Assistant Professor,VISITING,20,5,8
+F0129,Dr. Ashish Gupta,D_IIOT,Associate Professor,PERMANENT,16,5,12
+F0130,Dr. Bhanu Prakash Gupta,D_IIOT,Associate Professor,PERMANENT,16,5,12
+F0131,Dr. Bindoo Reddy,D_IIOT,Professor,PERMANENT,18,5,12
+F0132,Dr. Reena Singh,D_IIOT,Assistant Professor,VISITING,18,5,8
+F0133,Dr. Geetanshi Verma,D_IIOT,Professor,PERMANENT,20,5,8
+F0134,Dr. Arti Menon,D_IIOT,Assistant Professor,VISITING,16,5,8
+F0135,Dr. Sourabh Malhotra,D_IIOT,Associate Professor,PERMANENT,18,5,12
+F0136,Dr. Renu Reddy,D_IIOT,Associate Professor,PERMANENT,16,5,12
+F0137,Dr. Kanika Bose,D_IIOT,Associate Professor,PERMANENT,16,5,12
+F0138,Dr. Sowmya Kapoor,D_IIOT,Associate Professor,PERMANENT,16,5,12
+F0139,Dr. Rohit Chatterjee,D_IIOT,Assistant Professor,VISITING,18,5,8
+F0140,Dr. Khyati Reddy,D_IIOT,Associate Professor,VISITING,18,5,12
+F0141,Dr. Mahesh Reddy,D_IIOT,Associate Professor,PERMANENT,20,5,10
+F0142,Dr. Renu Kapoor,D_IIOT,Associate Professor,VISITING,20,5,10
+F0143,Dr. Deepak Bose,D_IIOT,Professor,PERMANENT,20,5,8
+F0144,Dr. Arti Gupta,D_IIOT,Associate Professor,PERMANENT,20,5,8

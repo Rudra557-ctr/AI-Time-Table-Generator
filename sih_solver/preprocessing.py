@@ -57,10 +57,18 @@ def load_all(root=None):
             data[fname] = _read(root / fname)
         except FileNotFoundError:
             data[fname] = []
-    # dedup offerings
+    # dedup offerings — ORIGINAL dataset had 11 exact duplicates (same
+    # course+section+counts but different offering_id, e.g. C054/S_CSE_3_A
+    # O0053 vs O0097). Keep those collapsed, but preserve INTENTIONAL
+    # parallel sub-batches like usar_like_dataset's lab A/B splits where the
+    # same (course_id, section_id) is deliberately offered twice with
+    # different student_count / required_sessions so they can run in parallel
+    # via parallel_offerings.csv. A richer key keeps the accidental dupes
+    # collapsed (their student_count etc. are identical) while the intentional
+    # splits (different counts) survive. Mirrored in dataset.py + manual_edit.py.
     seen=set(); deduped=[]
     for r in data["course_offerings.csv"]:
-        k=(r["course_id"], r["section_id"])
+        k=(r["course_id"], r["section_id"], r.get("required_sessions"), r.get("session_duration"), r.get("student_count"))
         if k in seen: continue
         seen.add(k); deduped.append(r)
     data["course_offerings_deduped"] = deduped
